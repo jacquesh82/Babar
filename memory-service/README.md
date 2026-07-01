@@ -31,14 +31,20 @@ Actions/OpenAPI pour ChatGPT, REST en fallback).
 >   résolution de contradictions **LWW avec fermeture temporelle et log
 >   obligatoire** (`consolidation/merger.py`), et decay **différencié** permanent
 >   vs situationnel (`consolidation/decay.py`).
+> - **Feedback** : `/v1/correct` **fonctionnel** (`feedback/corrections.py`) —
+>   `forget` (fermeture temporelle, audit préservé), `hard_delete` (RGPD),
+>   `update` (ferme l'ancien + ouvre le nouveau) ; cible par ids ou langage naturel.
+> - **Adaptateurs** : les 3 connecteurs (`api_rest`, `openai_action`,
+>   `mcp_server`) délèguent tous au **service commun** (`interface/common/service.py`)
+>   → aucune divergence. Le router Action est monté sur l'app REST ; le runtime
+>   MCP concret reste à brancher (les handlers d'outils sont prêts).
 >
 > Restent en stub : extraction par modèle (LLM local), `storage/vector_store`
-> (pgvector), feedback `/v1/correct`, adaptateurs MCP/Action.
+> (pgvector) + fallback vectoriel, runtime MCP concret.
 >
-> Tests : `pytest` → **36 unitaires (purs) verts** ; les tests d'intégration
-> DB/Redis (`graph_store`, `graph_walker`, recall, ingest, merger, decay,
-> régressions mémoire) se *skippent* automatiquement sans backend joignable, et
-> passent (**48/48**) avec Postgres + Redis (`docker compose up -d postgres redis`).
+> Tests : `pytest` → **39 unitaires (purs) verts** ; les tests d'intégration
+> DB/Redis se *skippent* automatiquement sans backend joignable, et passent
+> (**56/56**) avec Postgres + Redis (`docker compose up -d postgres redis`).
 
 ---
 

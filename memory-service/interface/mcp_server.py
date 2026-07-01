@@ -2,19 +2,25 @@
 
 Adaptateur "côté abonnement" : permet à Claude d'appeler la mémoire sans que le
 service consomme d'API payante. Il traduit les outils MCP vers le **contrat
-commun** (``interface/common/schemas.py``) et n'implémente AUCUNE logique métier
-propre — il délègue au même domaine que ``api_rest`` et ``openai_action``.
+commun** et **délègue au service commun** (``interface/common/service``) — aucune
+logique métier propre.
 
-Outils MCP prévus (mêmes opérations que le REST) :
+Outils MCP exposés (mêmes opérations que le REST) :
   * ``memory.recall``  : question → contexte injectable
   * ``memory.ingest``  : mémoriser un tour de conversation
   * ``memory.correct`` : corriger/oublier un souvenir
 
-Découplage #1 : c'est le SEUL type d'endroit autorisé à connaître les
-spécificités de Claude/MCP. Il ne fuit rien de propriétaire vers le domaine.
+Découplage #1 : seul endroit autorisé à connaître les spécificités de MCP/Claude.
+
+NB: le runtime MCP concret (SDK) n'est pas embarqué à ce stade. Les fonctions
+``tool_*`` sont fonctionnelles et testables ; ``build_mcp_server`` décrit les
+outils et reste à relier au transport MCP réel (TODO). Le ``TenantContext`` est
+pris du corps de requête ici ; à terme il proviendra de la session MCP
+authentifiée (TODO).
 """
 from __future__ import annotations
 
+from interface.common import service
 from interface.common.schemas import (
     CorrectionRequest,
     CorrectionResponse,
@@ -26,24 +32,34 @@ from interface.common.schemas import (
 
 
 async def tool_recall(req: RecallRequest) -> RecallResponse:
-    """Outil MCP ``memory.recall``. TODO: mapper MCP → domaine → RecallResponse."""
-    raise NotImplementedError("mcp_server.tool_recall — stub")
+    """Outil MCP ``memory.recall``."""
+    return await service.do_recall(req.tenant, req)
 
 
 async def tool_ingest(req: IngestRequest) -> IngestResponse:
-    """Outil MCP ``memory.ingest``. TODO: déléguer au pipeline d'ingestion."""
-    raise NotImplementedError("mcp_server.tool_ingest — stub")
+    """Outil MCP ``memory.ingest``."""
+    return await service.do_ingest(req.tenant, req)
 
 
 async def tool_correct(req: CorrectionRequest) -> CorrectionResponse:
-    """Outil MCP ``memory.correct``. TODO: déléguer à feedback.corrections."""
-    raise NotImplementedError("mcp_server.tool_correct — stub")
+    """Outil MCP ``memory.correct``."""
+    return await service.do_correct(req.tenant, req)
+
+
+# Déclaration des outils (nom → handler + schéma d'entrée), consommée par le
+# runtime MCP au moment du binding.
+TOOLS = {
+    "memory.recall": {"handler": tool_recall, "input_model": RecallRequest},
+    "memory.ingest": {"handler": tool_ingest, "input_model": IngestRequest},
+    "memory.correct": {"handler": tool_correct, "input_model": CorrectionRequest},
+}
 
 
 def build_mcp_server():
-    """Construit et retourne le serveur MCP (déclaration des outils ci-dessus).
+    """Construit le serveur MCP en enregistrant ``TOOLS``.
 
-    TODO: brancher un runtime MCP (ex: mcp SDK) et enregistrer les outils.
-    Peut aussi être monté comme router sur l'app FastAPI de ``api_rest``.
+    TODO: brancher un runtime MCP (ex: SDK ``mcp``) et enregistrer chaque outil
+    de ``TOOLS`` avec son ``input_model`` comme schéma. Peut aussi être exposé en
+    transport HTTP monté sur l'app FastAPI de ``api_rest``.
     """
-    raise NotImplementedError("mcp_server.build_mcp_server — stub")
+    raise NotImplementedError("mcp_server.build_mcp_server — runtime MCP à brancher (TODO)")
