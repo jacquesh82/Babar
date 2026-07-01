@@ -59,9 +59,31 @@ async def ingest(
 ) -> IngestResponse:
     """Ingestion incrémentale d'un tour de conversation.
 
-    TODO: extractor → coref_resolver → validator → buffer_store.push.
+    Flux : extractor → coref_resolver → validator → buffer_store.push. Les faits
+    validés sont posés en short-term ; la promotion long-term relève du worker de
+    consolidation (``consolidation/worker``), pas de cet endpoint.
     """
-    raise NotImplementedError("api_rest.ingest — stub")
+    from ingestion import coref_resolver, extractor, validator
+    from storage import buffer_store
+
+    triples = list(req.triples)
+    if req.turn_text:
+        triples += extractor.extract_triples(req.turn_text, tenant)
+
+    resolved = coref_resolver.resolve(triples, tenant, req.conversation_id)
+    result = validator.validate(resolved, tenant)
+
+    buffered = 0
+    for triple in result.accepted:
+        await buffer_store.push(tenant, triple, req.conversation_id)
+        buffered += 1
+
+    return IngestResponse(
+        accepted=len(result.accepted),
+        buffered=buffered,
+        rejected=len(result.rejected),
+        detail=result.reasons,
+    )
 
 
 @app.post("/v1/recall", response_model=RecallResponse)

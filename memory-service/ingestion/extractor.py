@@ -3,16 +3,32 @@
 Responsabilité : transformer **un tour de conversation** (pas la conversation
 entière en fin de session) en triples candidats sujet-prédicat-objet.
 
-L'extraction se fait **tour par tour** pour capter l'information au plus tôt et
-alimenter le buffer short-term sans attendre la fin de l'échange.
+Implémentation actuelle : extraction **heuristique déterministe** par motifs
+(regex) sur des énoncés personnels courants ("my name is…", "I live in…"). Elle
+est volontairement **provider-agnostic** et sans appel API payante ; le
+remplacement par un modèle d'extraction (local de préférence) est prévu (TODO).
 
-Découplage : l'extraction peut s'appuyer sur un modèle (local de préférence,
-pour rester provider-agnostic) mais n'expose jamais l'identité du LLM cible ;
-elle produit uniquement des ``Triple`` du contrat commun.
+La politique de rétention est déduite du motif : un nom / lieu de naissance est
+``permanent``, une préférence ou un lieu de résidence est *situationnel* (decay).
 """
 from __future__ import annotations
 
-from interface.common.schemas import TenantContext, Triple
+import re
+
+from interface.common.schemas import Provenance, TenantContext, Triple
+
+# Sujet par défaut des énoncés à la première personne (résolu ensuite en entité).
+_SELF = "user"
+
+# (regex, prédicat, permanent, decay_rate). Objet capturé dans le groupe 1.
+_PATTERNS: list[tuple[re.Pattern[str], str, bool, float]] = [
+    (re.compile(r"\bmy name is ([\w][\w'’-]*)", re.I), "has_name", True, 0.0),
+    (re.compile(r"\bi was born (?:in|on) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "born_in", True, 0.0),
+    (re.compile(r"\bi(?:'m| am) (\d{1,3}) years old", re.I), "has_age", False, 0.1),
+    (re.compile(r"\bi (?:live|living) in ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "lives_in", False, 0.05),
+    (re.compile(r"\bi (?:work|working) (?:at|for) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "works_at", False, 0.05),
+    (re.compile(r"\bi (?:like|love|enjoy) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "likes", False, 0.05),
+]
 
 
 def extract_triples(turn_text: str, tenant: TenantContext) -> list[Triple]:
@@ -26,9 +42,23 @@ def extract_triples(turn_text: str, tenant: TenantContext) -> list[Triple]:
         Liste de ``Triple`` non encore dédoublonnés/validés.
 
     TODO:
-        - Choisir le backend d'extraction (modèle local / règles / hybride).
-        - Détecter la politique de rétention (permanent vs decay) à partir de
-          marqueurs linguistiques ("toujours", "désormais", "aujourd'hui", …).
-        - Rattacher chaque triple à ``conversation_id`` pour la provenance.
+        - Remplacer/compléter l'heuristique par un modèle d'extraction local.
+        - Étendre la détection de permanence (marqueurs "toujours", "désormais"…).
     """
-    raise NotImplementedError("extractor.extract_triples — stub")
+    triples: list[Triple] = []
+    for pattern, predicate, permanent, decay_rate in _PATTERNS:
+        for match in pattern.finditer(turn_text):
+            obj = match.group(1).strip()
+            if not obj:
+                continue
+            triples.append(
+                Triple(
+                    subject=_SELF,
+                    predicate=predicate,
+                    object=obj,
+                    permanent=permanent,
+                    decay_rate=decay_rate,
+                    source=Provenance.CONVERSATION,
+                )
+            )
+    return triples

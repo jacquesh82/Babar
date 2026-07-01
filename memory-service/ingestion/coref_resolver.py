@@ -5,13 +5,27 @@ la coréférence ("il", "cette ville", "mon frère") et la désambiguïsation
 ("Paris" la ville vs "Paris" la personne) sont une étape à part entière, en
 amont de la validation.
 
-Rôle : mapper les mentions textuelles de triples fraîchement extraits vers des
-entités canoniques (``canonical_key`` des ``memory_nodes``), en résolvant les
-pronoms et en fusionnant les alias.
+Implémentation actuelle : normalisation en **clé canonique** (minuscule, espaces
+compactés) et résolution des pronoms à la première personne vers l'entité
+``user``. La désambiguïsation contextuelle avancée (embeddings + type) est
+prévue (TODO).
 """
 from __future__ import annotations
 
+import re
+
 from interface.common.schemas import TenantContext, Triple
+
+# Pronoms/mentions renvoyant à l'utilisateur courant.
+_SELF_MENTIONS = {"i", "me", "my", "myself", "mine", "moi", "je", "mon", "ma", "mes"}
+_SELF_CANONICAL = "user"
+_WS = re.compile(r"\s+")
+
+
+def canonicalize(mention: str) -> str:
+    """Normalise une mention en clé canonique (idempotent)."""
+    text = _WS.sub(" ", mention.strip().lower())
+    return _SELF_CANONICAL if text in _SELF_MENTIONS else text
 
 
 def resolve(
@@ -26,12 +40,18 @@ def resolve(
         tenant: contexte d'isolation.
         conversation_id: contexte de dialogue pour résoudre les pronoms.
 
-    Returns:
-        Triples dont ``subject``/``object`` pointent vers des clés canoniques.
-
     TODO:
-        - Fenêtre de coréférence par ``conversation_id`` (Redis short-term).
-        - Stratégie de désambiguïsation (embedding de contexte + type d'entité).
-        - Créer une nouvelle entité canonique si aucune correspondance fiable.
+        - Fenêtre de coréférence par ``conversation_id`` (antécédents récents).
+        - Désambiguïsation par embedding de contexte + type d'entité.
     """
-    raise NotImplementedError("coref_resolver.resolve — stub")
+    resolved: list[Triple] = []
+    for triple in triples:
+        resolved.append(
+            triple.model_copy(
+                update={
+                    "subject": canonicalize(triple.subject),
+                    "object": canonicalize(triple.object),
+                }
+            )
+        )
+    return resolved

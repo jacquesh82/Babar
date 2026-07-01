@@ -20,13 +20,20 @@ Actions/OpenAPI pour ChatGPT, REST en fallback).
 >   linéarisation budgétée (`context_builder/linearizer.py`), tracing
 >   (`observability/tracing.py`). L'endpoint `/v1/recall` est **fonctionnel**
 >   bout-en-bout (activation par graphe ; le fallback vectoriel reste en TODO).
+> - **Write path** : extraction incrémentale (`ingestion/extractor.py`,
+>   heuristique provider-agnostic), coréférence (`ingestion/coref_resolver.py`),
+>   validation/dédup (`ingestion/validator.py`), buffer short-term Redis avec
+>   critère de promotion explicite (`storage/buffer_store.py`). L'endpoint
+>   `/v1/ingest` est **fonctionnel** (bufférise ; la promotion long-term relève
+>   du worker de consolidation).
 >
-> Restent en stub : ingestion LLM, `consolidation/{merger,decay}`,
-> `storage/{vector_store,buffer_store}`, adaptateurs MCP/Action.
+> Restent en stub : extraction par modèle (LLM local), `consolidation/{merger,
+> decay}`, `storage/vector_store` (pgvector), adaptateurs MCP/Action.
 >
-> Tests : `pytest` → 21 unitaires (purs) verts ; les tests d'intégration
-> DB (`graph_store`, `graph_walker`, recall) se *skippent* automatiquement sans
-> Postgres joignable (les lancer via `docker compose up -d postgres`).
+> Tests : `pytest` → **32 unitaires (purs) verts** ; les tests d'intégration
+> DB/Redis (`graph_store`, `graph_walker`, recall, ingest) se *skippent*
+> automatiquement sans backend joignable (les lancer via
+> `docker compose up -d postgres redis`).
 
 ---
 
