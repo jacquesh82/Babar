@@ -10,9 +10,15 @@ sans jamais dépendre d'un provider particulier ni consommer une API payante.
 L'intégration se fait via des **connecteurs côté abonnement** (MCP pour Claude,
 Actions/OpenAPI pour ChatGPT, REST en fallback).
 
-> État actuel : **squelette d'architecture** (stubs + signatures + TODOs).
+> État actuel : **squelette d'architecture** (stubs + signatures + TODOs), avec
+> les **fondations implémentées et testées** : configuration (`config.py`), pool
+> Postgres (`storage/db.py`), isolation multi-tenant (`auth/tenant_isolation.py`)
+> et CRUD bi-temporel du graphe (`storage/graph_store.py`).
 > La logique métier fine (scoring, decay, extraction LLM, traversée de graphe)
 > n'est volontairement **pas** implémentée tant que l'architecture n'est pas validée.
+>
+> Tests : `pytest` (les tests d'intégration `storage/graph_store` se *skippent*
+> automatiquement sans Postgres joignable).
 
 ---
 

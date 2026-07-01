@@ -12,6 +12,7 @@ from __future__ import annotations
 from fastapi import Depends, FastAPI
 
 from auth.tenant_isolation import resolve_tenant
+from config import settings
 from interface.common.schemas import (
     CorrectionRequest,
     CorrectionResponse,
@@ -32,8 +33,23 @@ app = FastAPI(
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
-    """Vérifie la disponibilité Postgres/Redis. TODO: pings réels."""
-    raise NotImplementedError("api_rest.health — stub")
+    """Vérifie la disponibilité Postgres (et Redis si le client est présent)."""
+    from storage.db import ping as pg_ping
+
+    postgres_ok = await pg_ping()
+
+    redis_ok = False
+    try:  # Redis optionnel au stade bootstrap : best-effort, non bloquant.
+        import redis.asyncio as aioredis  # type: ignore
+
+        client = aioredis.from_url(settings.redis_url)
+        redis_ok = bool(await client.ping())
+        await client.aclose()
+    except Exception:
+        redis_ok = False
+
+    status = "ok" if postgres_ok else "degraded"
+    return HealthResponse(status=status, postgres=postgres_ok, redis=redis_ok)
 
 
 @app.post("/v1/ingest", response_model=IngestResponse)
