@@ -158,6 +158,30 @@ async def neighbors(
         return [dict(r) for r in rows]
 
 
+async def find_nodes(
+    tenant: TenantContext, terms: list[str], limit: int = 10
+) -> list[UUID]:
+    """Retourne les nœuds du tenant dont ``canonical_key`` ou ``label`` matche
+    (insensible à la casse) l'un des ``terms``. Support de l'``entity_linker``.
+    """
+    if not terms:
+        return []
+    lowered = [t.lower() for t in terms]
+    async with acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id FROM memory_nodes
+             WHERE tenant_id = $1
+               AND (lower(canonical_key) = ANY($2) OR lower(label) = ANY($2))
+             LIMIT $3
+            """,
+            tenant.tenant_id,
+            lowered,
+            limit,
+        )
+        return [r["id"] for r in rows]
+
+
 async def hard_delete(
     tenant: TenantContext, node_ids: list[UUID], edge_ids: list[UUID]
 ) -> int:

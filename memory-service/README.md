@@ -10,15 +10,23 @@ sans jamais dépendre d'un provider particulier ni consommer une API payante.
 L'intégration se fait via des **connecteurs côté abonnement** (MCP pour Claude,
 Actions/OpenAPI pour ChatGPT, REST en fallback).
 
-> État actuel : **squelette d'architecture** (stubs + signatures + TODOs), avec
-> les **fondations implémentées et testées** : configuration (`config.py`), pool
-> Postgres (`storage/db.py`), isolation multi-tenant (`auth/tenant_isolation.py`)
-> et CRUD bi-temporel du graphe (`storage/graph_store.py`).
-> La logique métier fine (scoring, decay, extraction LLM, traversée de graphe)
-> n'est volontairement **pas** implémentée tant que l'architecture n'est pas validée.
+> État actuel : squelette d'architecture (stubs + TODOs) avec plusieurs couches
+> **implémentées et testées** :
+> - **Fondations** : `config.py`, pool Postgres (`storage/db.py`), isolation
+>   multi-tenant (`auth/tenant_isolation.py`), CRUD bi-temporel du graphe
+>   (`storage/graph_store.py`).
+> - **Read path** : liaison d'entités (`retrieval/entity_linker.py`), traversée
+>   N-sauts (`retrieval/graph_walker.py`), fusion+scoring (`retrieval/scorer.py`),
+>   linéarisation budgétée (`context_builder/linearizer.py`), tracing
+>   (`observability/tracing.py`). L'endpoint `/v1/recall` est **fonctionnel**
+>   bout-en-bout (activation par graphe ; le fallback vectoriel reste en TODO).
 >
-> Tests : `pytest` (les tests d'intégration `storage/graph_store` se *skippent*
-> automatiquement sans Postgres joignable).
+> Restent en stub : ingestion LLM, `consolidation/{merger,decay}`,
+> `storage/{vector_store,buffer_store}`, adaptateurs MCP/Action.
+>
+> Tests : `pytest` → 21 unitaires (purs) verts ; les tests d'intégration
+> DB (`graph_store`, `graph_walker`, recall) se *skippent* automatiquement sans
+> Postgres joignable (les lancer via `docker compose up -d postgres`).
 
 ---
 

@@ -71,9 +71,38 @@ async def recall(
 ) -> RecallResponse:
     """Question → contexte mémoire injectable (texte + trace).
 
-    TODO: entity_linker → (graph_walker ∥ vector_search) → scorer → linearize.
+    Flux : entity_linker → graph_walker → scorer → linearize. La recherche
+    vectorielle (``vector_search``) n'est pas encore branchée (stub) ; le read
+    path fonctionne sur l'activation par graphe seule.
     """
-    raise NotImplementedError("api_rest.recall — stub")
+    from datetime import datetime, timezone
+
+    from context_builder.linearizer import linearize
+    from observability.tracing import log_recall, new_trace_id
+    from retrieval import entity_linker, graph_walker, scorer
+
+    trace_id = new_trace_id()
+    now = req.as_of or datetime.now(timezone.utc)
+
+    seeds = await entity_linker.link(tenant, req.query)
+    if not seeds:
+        return RecallResponse(context="", token_budget=req.token_budget, trace_id=trace_id)
+
+    walk = await graph_walker.walk(tenant, seeds, max_hops=req.max_hops, as_of=req.as_of)
+    facts = scorer.score(tenant, walk.edges, vector_candidates=None, now=now)
+    response = linearize(tenant, facts, req.token_budget, trace_id=trace_id)
+
+    selected_ids = {i.edge_ids[0] for i in response.items if i.edge_ids}
+    log_recall(
+        trace_id,
+        tenant,
+        req.query,
+        selected=[{"edge_id": str(e)} for e in selected_ids],
+        rejected=[{"edge_id": str(f.edge_id)} for f in facts if f.edge_id not in selected_ids],
+        tokens_used=response.tokens_used,
+        token_budget=req.token_budget,
+    )
+    return response
 
 
 @app.post("/v1/correct", response_model=CorrectionResponse)
