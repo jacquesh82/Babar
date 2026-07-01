@@ -50,8 +50,8 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Migration initiale appliquée au premier démarrage du volume.
-      - ./storage/migrations/0001_init.sql:/docker-entrypoint-initdb.d/0001_init.sql:ro
+      # Migrations appliquées dans l'ordre au premier démarrage du volume.
+      - ./storage/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memory} -d ${POSTGRES_DB:-memory}"]
       interval: 5s

@@ -26,14 +26,19 @@ Actions/OpenAPI pour ChatGPT, REST en fallback).
 >   critère de promotion explicite (`storage/buffer_store.py`). L'endpoint
 >   `/v1/ingest` est **fonctionnel** (bufférise ; la promotion long-term relève
 >   du worker de consolidation).
+> - **Consolidation** : worker orchestrateur (`consolidation/worker.py`) qui
+>   referme la boucle short-term → long-term (promotion), fusion de doublons +
+>   résolution de contradictions **LWW avec fermeture temporelle et log
+>   obligatoire** (`consolidation/merger.py`), et decay **différencié** permanent
+>   vs situationnel (`consolidation/decay.py`).
 >
-> Restent en stub : extraction par modèle (LLM local), `consolidation/{merger,
-> decay}`, `storage/vector_store` (pgvector), adaptateurs MCP/Action.
+> Restent en stub : extraction par modèle (LLM local), `storage/vector_store`
+> (pgvector), feedback `/v1/correct`, adaptateurs MCP/Action.
 >
-> Tests : `pytest` → **32 unitaires (purs) verts** ; les tests d'intégration
-> DB/Redis (`graph_store`, `graph_walker`, recall, ingest) se *skippent*
-> automatiquement sans backend joignable (les lancer via
-> `docker compose up -d postgres redis`).
+> Tests : `pytest` → **36 unitaires (purs) verts** ; les tests d'intégration
+> DB/Redis (`graph_store`, `graph_walker`, recall, ingest, merger, decay,
+> régressions mémoire) se *skippent* automatiquement sans backend joignable, et
+> passent (**48/48**) avec Postgres + Redis (`docker compose up -d postgres redis`).
 
 ---
 
