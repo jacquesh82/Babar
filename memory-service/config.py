@@ -69,6 +69,29 @@ class Settings(BaseSettings):
     public_base_url: str = "https://memory.mindlog.today"
     mcp_resource: str = "https://memory.mindlog.today/mcp"
 
+    # --- CORS ---
+    # Les connecteurs MCP qui s'exécutent côté navigateur (Grok, ChatGPT…) font
+    # des fetch cross-origin : sans CORS le preflight OPTIONS échoue et les
+    # réponses sont bloquées → « Connection failed ». Claude parle côté serveur
+    # et n'est pas concerné. Liste d'origines séparées par des virgules ; ``*``
+    # autorise tout (OK ici : l'auth se fait par Bearer, pas par cookie).
+    cors_allow_origins: str = "*"
+
+    # --- Web app (/app) : visualiseur de mémoire servi par l'API ---
+    # Répertoire des fichiers statiques du SPA (index.html + assets). Servi tel
+    # quel sur ``/app`` ; le montage est ignoré si le dossier n'existe pas.
+    webapp_dir: str = "../memory-ui/app"
+    # Client OAuth PUBLIC (navigateur) pour le flux Authorization Code + PKCE vers
+    # Mindlog.id. Vide → le SPA retombe sur le mode "coller un Bearer" (dev).
+    oidc_client_id: str = ""
+    # Endpoints OAuth du provider. Laissés vides, le SPA tente la découverte OIDC
+    # (``{issuer}/.well-known/openid-configuration``). Mindlog.id exposant des
+    # chemins non standard, on peut les forcer ici.
+    oidc_authorization_endpoint: str = ""  # ex: https://id.mindlog.today/oauth/authorize
+    oidc_token_endpoint: str = ""  # ex: https://id.mindlog.today/oauth/token
+    # Scopes demandés par le SPA (``openid`` requis pour obtenir un ID/JWT).
+    oidc_scopes: str = "openid profile"
+
     @property
     def asyncpg_dsn(self) -> str:
         """DSN utilisable par asyncpg (retire le suffixe de dialecte SQLAlchemy)."""

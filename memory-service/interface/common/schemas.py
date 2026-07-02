@@ -73,7 +73,10 @@ class Triple(BaseModel):
 class IngestRequest(BaseModel):
     """Ingestion incrémentale : un tour de conversation → triples candidats."""
 
-    tenant: TenantContext
+    # Le tenant EFFECTIF vient toujours de l'auth (header/JWT/OIDC), jamais du
+    # corps : optionnel ici pour que les clients directs (SPA /app) n'aient pas à
+    # deviner leur ``tenant_id`` dérivé côté serveur. MCP l'injecte avant validation.
+    tenant: TenantContext | None = None
     # Soit du texte brut à extraire, soit des triples déjà formés.
     turn_text: str | None = None
     triples: list[Triple] = Field(default_factory=list)
@@ -93,7 +96,8 @@ class IngestResponse(BaseModel):
 class RecallRequest(BaseModel):
     """Question du LLM cible → contexte mémoire à injecter."""
 
-    tenant: TenantContext
+    # Tenant effectif = auth (jamais le corps) ; optionnel côté client. Voir IngestRequest.
+    tenant: TenantContext | None = None
     query: str
     # Budget de tokens STRICT respecté par le linearizer (contrainte #6).
     token_budget: int = Field(default=2000, gt=0)
@@ -137,7 +141,8 @@ class CorrectionAction(str, Enum):
 
 
 class CorrectionRequest(BaseModel):
-    tenant: TenantContext
+    # Tenant effectif = auth (jamais le corps) ; optionnel côté client. Voir IngestRequest.
+    tenant: TenantContext | None = None
     action: CorrectionAction
     # Cible : soit des ids précis, soit une description en langage naturel.
     edge_ids: list[UUID] = Field(default_factory=list)

@@ -11,6 +11,9 @@ services:
       uvicorn interface.api_rest:app
       --host ${APP_HOST:-0.0.0.0} --port ${APP_PORT:-8000} --reload
     env_file: .env
+    environment:
+      # Le SPA (/app) est bind-monté depuis le repo sœur memory-ui.
+      WEBAPP_DIR: /webapp
     ports:
       - "${APP_PORT:-8000}:8000"
     depends_on:
@@ -20,6 +23,8 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
+      # Visualiseur de mémoire servi sur /app (monorepo Babar : ../memory-ui/app).
+      - ../memory-ui/app:/webapp:ro
 
   worker:
     build:

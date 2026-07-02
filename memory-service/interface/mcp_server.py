@@ -36,7 +36,7 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from auth.tenant_isolation import TenantIsolationError, resolve_tenant_context_async
 from config import settings
@@ -300,6 +300,32 @@ def build_mcp_server() -> APIRouter:
         from auth.oidc import protected_resource_metadata
 
         return protected_resource_metadata()
+
+    @router.get("/.well-known/oauth-authorization-server")
+    @router.get("/.well-known/oauth-authorization-server/mcp")
+    async def oauth_authorization_server() -> Response:
+        # Compat clients MCP « spec 2025-03-26 » (dont Grok) : au lieu de suivre le
+        # pointeur `protected-resource` vers le provider, ils cherchent les
+        # métadonnées du serveur d'autorisation sur l'ORIGINE du serveur MCP. On
+        # redirige vers Mindlog.id (source de vérité) ; l'issuer renvoyé reste
+        # id.mindlog.today, cohérent avec le host final après redirection.
+        if not settings.oidc_issuer:
+            return Response(status_code=404)
+        return RedirectResponse(
+            settings.oidc_issuer.rstrip("/") + "/.well-known/oauth-authorization-server",
+            status_code=302,
+        )
+
+    @router.get("/.well-known/openid-configuration")
+    @router.get("/.well-known/openid-configuration/mcp")
+    async def openid_configuration() -> Response:
+        # Même compat que ci-dessus pour les clients qui tentent la découverte OIDC.
+        if not settings.oidc_issuer:
+            return Response(status_code=404)
+        return RedirectResponse(
+            settings.oidc_issuer.rstrip("/") + "/.well-known/openid-configuration",
+            status_code=302,
+        )
 
     @router.get("/mcp")
     async def mcp_get() -> Response:

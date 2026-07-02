@@ -11,8 +11,10 @@ Découplage #1 : cet adaptateur ne connaît aucun LLM ; il parle le contrat comm
 from __future__ import annotations
 
 from fastapi import Depends, FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from auth.tenant_isolation import resolve_tenant
+from config import settings
 from interface.common import service
 from interface.common.schemas import (
     CorrectionRequest,
@@ -29,6 +31,21 @@ app = FastAPI(
     title="memory-service",
     version="0.1.0",
     description="Mémoire persistante en graphe, agnostique du LLM consommateur.",
+)
+
+# CORS : indispensable pour les connecteurs MCP côté navigateur (Grok, ChatGPT…).
+# ``expose_headers`` est critique : sans lui le JS du connecteur ne peut lire ni
+# ``Mcp-Session-Id`` (→ session MCP impossible) ni ``WWW-Authenticate`` (→ flux
+# OAuth jamais déclenché). Auth par Bearer (pas cookie) → allow_credentials=False,
+# ce qui rend l'origine ``*`` valide.
+_cors_origins = [o.strip() for o in settings.cors_allow_origins.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins or ["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Mcp-Session-Id", "MCP-Protocol-Version"],
+    expose_headers=["Mcp-Session-Id", "WWW-Authenticate", "MCP-Protocol-Version"],
 )
 
 
@@ -100,8 +117,31 @@ async def correct(
 
 
 # Montage des adaptateurs (mêmes schémas, même domaine commun).
+import os  # noqa: E402
+
+from interface.app_api import router as _webapp_api_router  # noqa: E402
 from interface.mcp_server import build_mcp_server  # noqa: E402
 from interface.openai_action import router as _action_router  # noqa: E402
 
 app.include_router(_action_router)
 app.include_router(build_mcp_server())
+app.include_router(_webapp_api_router)
+
+
+def _mount_webapp() -> None:
+    """Monte le SPA visualiseur de mémoire sur ``/app`` (best-effort).
+
+    Sert les fichiers statiques de ``settings.webapp_dir`` (``html=True`` →
+    ``index.html`` par défaut). Ignoré silencieusement si le dossier est absent
+    (ex: image API déployée sans le front) pour ne jamais casser le démarrage.
+    """
+    from config import settings
+
+    webapp_path = os.path.abspath(settings.webapp_dir)
+    if os.path.isdir(webapp_path):
+        from fastapi.staticfiles import StaticFiles
+
+        app.mount("/app", StaticFiles(directory=webapp_path, html=True), name="webapp")
+
+
+_mount_webapp()

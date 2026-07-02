@@ -214,7 +214,36 @@ curl -H "X-Tenant-Id: 11111111-1111-1111-1111-111111111111" \
      http://localhost:8000/v1/recall
 ```
 
-## 7. Arborescence
+## 7. Visualiseur web (`/app`)
+
+Un **SPA sans build** (HTML/CSS/JS statique, dark/monospace) permet de *parcourir*
+le contenu de la mémoire et de le **corriger** depuis le navigateur. Il vit dans le
+repo sœur **`memory-ui/app/`** (monorepo Babar) et est servi tel quel par l'API sur
+`/app` (montage `StaticFiles`, ignoré si le dossier est absent).
+
+- **Auth identique au MCP** : le SPA lit `/v1/webapp/config` (public, sans secret)
+  puis s'authentifie selon `TENANT_MODE` — **OIDC Mindlog.id en Authorization Code
+  + PKCE** (`OIDC_CLIENT_ID` requis), sinon collage d'un **Bearer** (dev) ou saisie
+  d'un `X-Tenant-Id` (mode `header`). Le jeton n'est gardé qu'en `sessionStorage`.
+- **Lecture** : `GET /v1/memory/graph` (arêtes enrichies + nœuds, filtre `q`,
+  `include_closed`, pagination) et `GET /v1/memory/stats` — **scopés tenant** par la
+  même dépendance d'auth que le reste.
+- **Vues** : liste de **faits** groupés par entité (badges permanent/decay/oublié +
+  confiance) et **graphe** force-directed (SVG) avec panneau latéral par entité.
+- **Corrections** : *oublier* (fermeture temporelle), *corriger* (update = ferme +
+  ouvre), *supprimer* (RGPD) — délèguent tous au `/v1/correct` existant.
+
+```bash
+# Local (compose bind-monte ../memory-ui/app sur /webapp) :
+docker compose up --build           # puis http://localhost:8000/app/
+```
+
+Déploiement `https://memory.mindlog.today/app` : servir `memory-ui/app/` via
+`StaticFiles` (défaut) — le reverse proxy qui fronte déjà le domaine n'a rien à
+changer. Renseigner `OIDC_CLIENT_ID` (client public PKCE enregistré chez Mindlog.id)
+et, si besoin, `OIDC_AUTHORIZATION_ENDPOINT` / `OIDC_TOKEN_ENDPOINT`.
+
+## 8. Arborescence
 
 ```
 memory-service/
@@ -225,7 +254,8 @@ memory-service/
 ├── consolidation/    worker (+ cron), merger (contradictions LWW), decay
 ├── context_builder/  linearizer (sélection budgétée → texte)
 ├── feedback/         corrections explicites ("forget that I…")
-├── interface/        common/{schemas,service} + mcp_server + openai_action + api_rest
+├── interface/        common/{schemas,service} + mcp_server + openai_action + api_rest + app_api
+│                     (app_api : browse /v1/memory/* + /v1/webapp/config ; monte /app)
 ├── auth/             tenant_isolation (header/jwt/single), jwt_utils
 ├── observability/    tracing (structlog + audit recall_log)
 ├── tests/            unitaires purs + intégration + memory_regression
