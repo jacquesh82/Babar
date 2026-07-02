@@ -68,6 +68,9 @@ async def apply_correction(tenant: TenantContext, req: CorrectionRequest) -> Cor
             await graph_store.add_edge(tenant, req.replacement)
             affected_edges += 1
 
+    # La mémoire a changé → invalider le cache de requêtes du tenant.
+    await entity_linker.invalidate(tenant)
+
     logger.info(
         "correction trace=%s tenant=%s action=%s edges=%d nodes=%d",
         trace_id,

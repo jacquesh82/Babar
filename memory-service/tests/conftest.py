@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import pytest
 
-from storage import buffer_store, db
+from storage import buffer_store, db, redis_client
 
 
 @pytest.fixture(autouse=True)
 async def _reset_backends():
     db._pool = None
     buffer_store._redis = None
+    redis_client._client = None
     yield
     try:
         await db.close_pool()
@@ -28,3 +29,7 @@ async def _reset_backends():
     except Exception:
         pass
     buffer_store._redis = None
+    try:
+        await redis_client.close()
+    except Exception:
+        pass

@@ -76,6 +76,13 @@ async def run_consolidation_cycle() -> CycleReport:
             await merger.resolve_contradictions(tenant, strategy)
         ).contradictions_resolved
         report.edges_decayed += (await decay.apply_decay(tenant)).edges_decayed
+        # Le long-term a changé (promotion/merge/decay) → invalider le cache.
+        try:
+            from retrieval import entity_linker
+
+            await entity_linker.invalidate(tenant)
+        except Exception:
+            logger.warning("invalidation du cache indisponible", exc_info=True)
         report.tenants += 1
     logger.info(
         "cycle terminé : %d tenants, %d promus, %d fusions, %d contradictions, %d decays",
