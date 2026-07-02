@@ -26,9 +26,13 @@ async def test_initialize_returns_server_info():
 async def test_tools_list_exposes_three_tools_with_schema():
     resp = await mcp_server.handle_jsonrpc({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     names = {t["name"] for t in resp["result"]["tools"]}
-    assert names == {"memory.recall", "memory.ingest", "memory.correct"}
+    assert names == {"memory_recall", "memory_ingest", "memory_correct"}
     for tool in resp["result"]["tools"]:
-        assert "inputSchema" in tool and tool["inputSchema"]["type"] == "object"
+        schema = tool["inputSchema"]
+        assert schema["type"] == "object"
+        # `tenant` est injecté depuis le token → jamais exposé/réclamé au LLM.
+        assert "tenant" not in schema.get("properties", {})
+        assert "tenant" not in schema.get("required", [])
 
 
 async def test_unknown_method_is_jsonrpc_error():
@@ -50,7 +54,7 @@ async def test_invalid_arguments_is_jsonrpc_error():
             "jsonrpc": "2.0",
             "id": 5,
             "method": "tools/call",
-            "params": {"name": "memory.recall", "arguments": {}},
+            "params": {"name": "memory_recall", "arguments": {}},
         }
     )
     assert "error" in resp
@@ -68,7 +72,7 @@ async def test_tools_call_recall_end_to_end():
             "id": 6,
             "method": "tools/call",
             "params": {
-                "name": "memory.recall",
+                "name": "memory_recall",
                 "arguments": {
                     "tenant": {"tenant_id": str(tenant.tenant_id)},
                     "query": "where does user live",

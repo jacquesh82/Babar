@@ -179,6 +179,89 @@ async def find_nodes(tenant: TenantContext, terms: list[str], limit: int = 10) -
         return [r["id"] for r in rows]
 
 
+async def list_graph(
+    tenant: TenantContext,
+    q: str | None = None,
+    include_closed: bool = False,
+    limit: int = 200,
+    offset: int = 0,
+) -> dict:
+    """Liste le contenu du graphe d'un tenant, pour le visualiseur ``/app``.
+
+    Retourne ``{"edges": [...], "nodes": [...]}`` — arêtes enrichies des libellés
+    sujet/objet, et nœuds incidents avec leurs métadonnées de mémoire. Par défaut
+    seules les arêtes **actives** (``valid_until IS NULL``) sont renvoyées ;
+    ``include_closed=True`` inclut aussi les faits oubliés/périmés (audit).
+    ``q`` filtre (insensible à la casse) sur libellé sujet/objet ou prédicat.
+    """
+    limit = max(1, min(limit, 1000))
+    offset = max(0, offset)
+    clauses = ["e.tenant_id = $1"]
+    params: list = [tenant.tenant_id]
+    if not include_closed:
+        clauses.append("e.valid_until IS NULL")
+    if q:
+        params.append(f"%{q.lower()}%")
+        idx = len(params)
+        clauses.append(
+            f"(lower(s.label) LIKE ${idx} OR lower(o.label) LIKE ${idx} "
+            f"OR lower(e.predicate) LIKE ${idx})"
+        )
+    params.extend([limit, offset])
+    where = " AND ".join(clauses)
+    async with acquire() as conn:
+        edge_rows = await conn.fetch(
+            f"""
+            SELECT e.id, e.subject_id, s.label AS subject_label, e.predicate,
+                   e.object_id, o.label AS object_label,
+                   e.weight, e.importance, e.permanent, e.decay_rate,
+                   e.confidence, e.source,
+                   e.valid_from, e.valid_until, e.recorded_at
+              FROM memory_edges e
+              JOIN memory_nodes s ON s.id = e.subject_id
+              JOIN memory_nodes o ON o.id = e.object_id
+             WHERE {where}
+             ORDER BY e.recorded_at DESC
+             LIMIT ${len(params) - 1} OFFSET ${len(params)}
+            """,
+            *params,
+        )
+        edges = [dict(r) for r in edge_rows]
+        node_ids = {e["subject_id"] for e in edges} | {e["object_id"] for e in edges}
+        nodes: list[dict] = []
+        if node_ids:
+            node_rows = await conn.fetch(
+                """
+                SELECT id, node_type, label, importance, permanent, decay_rate
+                  FROM memory_nodes
+                 WHERE tenant_id = $1 AND id = ANY($2::uuid[])
+                """,
+                tenant.tenant_id,
+                list(node_ids),
+            )
+            nodes = [dict(r) for r in node_rows]
+    return {"edges": edges, "nodes": nodes}
+
+
+async def graph_stats(tenant: TenantContext) -> dict:
+    """Compteurs agrégés du graphe d'un tenant (en-tête du visualiseur)."""
+    async with acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT
+              (SELECT count(*) FROM memory_nodes WHERE tenant_id = $1) AS nodes,
+              (SELECT count(*) FROM memory_edges
+                 WHERE tenant_id = $1 AND valid_until IS NULL) AS active_edges,
+              (SELECT count(*) FROM memory_edges
+                 WHERE tenant_id = $1 AND valid_until IS NOT NULL) AS closed_edges,
+              (SELECT count(*) FROM memory_edges
+                 WHERE tenant_id = $1 AND valid_until IS NULL AND permanent) AS permanent_edges
+            """,
+            tenant.tenant_id,
+        )
+        return dict(row) if row else {}
+
+
 async def hard_delete(tenant: TenantContext, node_ids: list[UUID], edge_ids: list[UUID]) -> int:
     """Suppression définitive (droit à l'oubli RGPD). Retourne le nb de lignes.
 

@@ -13,9 +13,10 @@ la première ligne de défense applicative ; la base est le filet de sécurité.
 from __future__ import annotations
 
 import time
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from fastapi import Header
+from starlette.concurrency import run_in_threadpool
 
 from auth.jwt_utils import JWTError, decode_hs256
 from config import settings
@@ -23,6 +24,11 @@ from interface.common.schemas import TenantContext
 
 # Tenant de développement utilisé uniquement en mode "single" (jamais en prod).
 _DEV_TENANT = UUID("00000000-0000-0000-0000-000000000001")
+
+# Namespace stable pour dériver un UUID des identifiants Mindlog.id (org/sub) qui
+# ne sont pas forcément des UUID. La dérivation est déterministe : même id → même
+# tenant, toujours.
+_MINDLOG_NS = UUID("2f1e7c0a-9b3d-5e64-8a17-6d4c9f0b2e11")
 
 
 class TenantIsolationError(Exception):
@@ -62,7 +68,60 @@ def resolve_tenant_context(
     if mode == "jwt":
         return _tenant_from_jwt(authorization)
 
+    if mode == "oidc":
+        return _tenant_from_oidc(authorization)
+
     raise TenantIsolationError(f"TENANT_MODE inconnu : {mode!r}")
+
+
+def _coerce_uuid(value: str) -> UUID:
+    """Identifiant → UUID : direct si déjà un UUID, sinon dérivation uuid5 stable."""
+    try:
+        return UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        return uuid5(_MINDLOG_NS, str(value))
+
+
+def _tenant_from_oidc(authorization: str | None) -> TenantContext:
+    """Extrait le tenant d'un jeton d'accès OIDC (Mindlog.id) vérifié via JWKS.
+
+    ``org``-claim → ``tenant_id`` (isolation), ``sub``-claim → ``user_id``. Les
+    identifiants Mindlog.id non-UUID sont dérivés en UUID de façon déterministe.
+    """
+    # Import local : ne tire PyJWT/cryptography que si le mode oidc est actif.
+    from auth.oidc import OIDCError, verify_oidc_token
+
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise TenantIsolationError("header Authorization Bearer manquant")
+
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        claims = verify_oidc_token(token)
+    except OIDCError as exc:
+        raise TenantIsolationError(f"jeton OIDC invalide : {exc}") from exc
+
+    org_value = claims.get(settings.oidc_tenant_claim)
+    if not org_value:
+        raise TenantIsolationError(f"claim tenant '{settings.oidc_tenant_claim}' absent")
+    user_value = claims.get(settings.oidc_user_claim)
+    return TenantContext(
+        tenant_id=_coerce_uuid(org_value),
+        user_id=_coerce_uuid(user_value) if user_value else None,
+    )
+
+
+async def resolve_tenant_context_async(
+    tenant_header: str | None,
+    authorization: str | None,
+    mode: str | None = None,
+) -> TenantContext:
+    """Variante async : déporte la résolution en threadpool.
+
+    Le mode ``oidc`` peut faire un appel réseau (récupération JWKS) ; on l'exécute
+    hors de la boucle événementielle pour ne pas la bloquer. Les autres modes sont
+    purs, l'overhead est négligeable.
+    """
+    return await run_in_threadpool(resolve_tenant_context, tenant_header, authorization, mode)
 
 
 def _tenant_from_jwt(authorization: str | None) -> TenantContext:
@@ -100,7 +159,7 @@ async def resolve_tenant(
     from fastapi import HTTPException  # import local pour garder le cœur pur importable
 
     try:
-        return resolve_tenant_context(x_tenant_id, authorization)
+        return await resolve_tenant_context_async(x_tenant_id, authorization)
     except TenantIsolationError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 

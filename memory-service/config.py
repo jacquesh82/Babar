@@ -39,14 +39,58 @@ class Settings(BaseSettings):
     consolidation_cron: str = "0 3 * * *"
     contradiction_strategy: str = "lww"
 
-    # --- Multi-tenant : "header" | "jwt" | "single" ---
+    # --- Multi-tenant : "header" | "jwt" | "oidc" | "single" ---
     tenant_mode: str = "header"
 
-    # --- Auth JWT (mode tenant_mode="jwt") ---
+    # --- Auth JWT HS256 (mode tenant_mode="jwt") ---
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_tenant_claim: str = "tenant_id"
     jwt_user_claim: str = "user_id"
+
+    # --- Auth OIDC / Mindlog.id (mode tenant_mode="oidc") ---
+    # Provider OAuth 2.1 / OIDC émettant des JWT ES256 vérifiés via JWKS.
+    # Mindlog.id (https://id.mindlog.today) : JWKS sur un chemin NON standard
+    # (/oauth/jwks) → OIDC_JWKS_URI doit être fixé explicitement.
+    oidc_issuer: str = ""  # ex: https://id.mindlog.today  (vérif du claim `iss`)
+    oidc_jwks_uri: str = ""  # ex: https://id.mindlog.today/oauth/jwks
+    # `aud` attendu. IMPORTANT : Mindlog.id ne supporte pas encore les resource
+    # indicators (RFC 8707) → le `aud` ne cible pas la ressource. Tant que ce
+    # n'est pas résolu côté provider, laisser une valeur stricte ici fait échouer
+    # la validation (fail-closed voulu) : NE PAS exposer publiquement avant.
+    oidc_audience: str = "https://memory.mindlog.today/mcp"
+    oidc_algorithms: str = "RS256,ES256"
+    # Mindlog.id n'émet pas de claim d'organisation → `sub` sert de tenant
+    # (une mémoire isolée par identité Mindlog.id).
+    oidc_tenant_claim: str = "sub"  # claim → tenant_id (isolation)
+    oidc_user_claim: str = "sub"  # claim → user_id
+
+    # --- Métadonnées OAuth de cette ressource MCP (flux OAuth MCP complet) ---
+    public_base_url: str = "https://memory.mindlog.today"
+    mcp_resource: str = "https://memory.mindlog.today/mcp"
+
+    # --- CORS ---
+    # Les connecteurs MCP qui s'exécutent côté navigateur (Grok, ChatGPT…) font
+    # des fetch cross-origin : sans CORS le preflight OPTIONS échoue et les
+    # réponses sont bloquées → « Connection failed ». Claude parle côté serveur
+    # et n'est pas concerné. Liste d'origines séparées par des virgules ; ``*``
+    # autorise tout (OK ici : l'auth se fait par Bearer, pas par cookie).
+    cors_allow_origins: str = "*"
+
+    # --- Web app (/app) : visualiseur de mémoire servi par l'API ---
+    # Répertoire des fichiers statiques du SPA (index.html + assets). Servi tel
+    # quel sur ``/app`` ; le montage est ignoré si le dossier n'existe pas.
+    webapp_dir: str = "../memory-ui/app"
+    # Client OAuth PUBLIC (navigateur) pour le flux Authorization Code + PKCE vers
+    # Mindlog.id. Vide → le SPA retombe sur le mode "coller un Bearer" (dev).
+    oidc_client_id: str = ""
+    # Endpoints OAuth du provider. Laissés vides, le SPA tente la découverte OIDC
+    # (``{issuer}/.well-known/openid-configuration``). Mindlog.id exposant des
+    # chemins non standard, on peut les forcer ici.
+    oidc_authorization_endpoint: str = ""  # ex: https://id.mindlog.today/oauth/authorize
+    oidc_token_endpoint: str = ""  # ex: https://id.mindlog.today/oauth/token
+    # Scopes demandés par le SPA (``openid`` requis pour obtenir un ID/JWT).
+    oidc_scopes: str = "openid profile"
 
     @property
     def asyncpg_dsn(self) -> str:

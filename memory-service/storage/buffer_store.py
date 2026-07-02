@@ -77,6 +77,80 @@ async def peek(tenant: TenantContext, limit: int = 100) -> list[Triple]:
     return triples
 
 
+async def list_pending(tenant: TenantContext, limit: int = 500) -> list[dict]:
+    """Faits short-term en attente de consolidation, pour le viewer (``/app``).
+
+    Retourne les triples bufferisés enrichis de leurs métadonnées de promotion
+    (``count``, ``age_seconds``, ``promotable``) — permet à l'UI de montrer ce qui
+    vient d'être ingéré **avant** que le worker ne le promeuve vers le graphe.
+    """
+    redis = _get_redis()
+    now = time.time()
+    entries = await redis.hgetall(_buffer_key(tenant))
+    out: list[dict] = []
+    for raw in list(entries.values())[:limit]:
+        entry = json.loads(raw)
+        t = entry["triple"]
+        count = int(entry.get("count", 1))
+        age = now - float(entry.get("first_seen", now))
+        out.append(
+            {
+                "subject": t.get("subject"),
+                "predicate": t.get("predicate"),
+                "object": t.get("object"),
+                "permanent": bool(t.get("permanent", False)),
+                "decay_rate": float(t.get("decay_rate", 0.0)),
+                "confidence": float(t.get("confidence", 1.0)),
+                "count": count,
+                "age_seconds": age,
+                "promotable": should_promote(Triple.model_validate(t), count, age),
+            }
+        )
+    return out
+
+
+async def update_pending(
+    tenant: TenantContext,
+    subject: str,
+    predicate: str,
+    obj: str,
+    new_predicate: str,
+    new_object: str,
+    permanent: bool | None = None,
+) -> bool:
+    """Modifie un fait encore en buffer (short-term), avant sa consolidation.
+
+    Le sujet est conservé (identité du souvenir) ; ``predicate``/``object`` et
+    éventuellement ``permanent`` sont mis à jour. Préserve ``count``/``first_seen``
+    (donc l'échéance de promotion). Retourne ``False`` si le fait n'existe plus.
+    """
+    redis = _get_redis()
+    key = _buffer_key(tenant)
+    old_field = f"{subject}|{predicate}|{obj}"
+    raw = await redis.hget(key, old_field)
+    if raw is None:
+        return False
+    entry = json.loads(raw)
+    triple = entry["triple"]
+    triple["predicate"] = new_predicate
+    triple["object"] = new_object
+    if permanent is not None:
+        triple["permanent"] = permanent
+    triple["source"] = "user_correction"
+    new_field = f"{subject}|{new_predicate}|{new_object}"
+    await redis.hset(key, new_field, json.dumps(entry))
+    if new_field != old_field:
+        await redis.hdel(key, old_field)
+    return True
+
+
+async def delete_pending(tenant: TenantContext, subject: str, predicate: str, obj: str) -> bool:
+    """Retire un fait du buffer short-term (avant consolidation). Idempotent."""
+    redis = _get_redis()
+    removed = await redis.hdel(_buffer_key(tenant), f"{subject}|{predicate}|{obj}")
+    return bool(removed)
+
+
 async def drain_promotable(tenant: TenantContext) -> list[Triple]:
     """Retire et renvoie les triples éligibles à la promotion long-term."""
     redis = _get_redis()

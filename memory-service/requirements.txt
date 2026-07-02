@@ -15,6 +15,10 @@ redis>=5.0
 # celery[redis]>=5.4
 # arq>=0.26
 
+# Auth OIDC (Mindlog.id) : vérification JWT RS256/ES256 via JWKS.
+# (Le mode HS256 reste stdlib-only ; PyJWT n'est requis qu'en tenant_mode=oidc.)
+pyjwt[crypto]>=2.9
+
 # Observabilité
 structlog>=24.1
 
