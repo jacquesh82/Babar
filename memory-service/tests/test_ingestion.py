@@ -69,6 +69,34 @@ def test_validator_rejects_empty_part():
     assert len(result.rejected) == 1
 
 
+def test_validator_quasi_dedupes_case_and_spaces():
+    a = Triple(subject="user", predicate="likes", object="Coffee")
+    b = Triple(subject="User", predicate="likes", object=" coffee ")
+    result = validator.validate([a, b], TENANT)
+    assert len(result.accepted) == 1  # normalisation → même empreinte
+    assert len(result.rejected) == 1
+
+
+def test_validator_flags_contradiction_candidate():
+    a = Triple(subject="user", predicate="lives_in", object="paris")
+    b = Triple(subject="user", predicate="lives_in", object="london")
+    result = validator.validate([a, b], TENANT)
+    # Les deux sont acceptés (le worker tranchera), mais la contradiction est signalée.
+    assert len(result.accepted) == 2
+    assert len(result.contradiction_candidates) == 1
+    cand = result.contradiction_candidates[0]
+    assert cand["predicate"] == "lives_in"
+    assert set(cand["objects"]) == {"paris", "london"}
+
+
+def test_validator_multivalue_predicate_not_flagged():
+    a = Triple(subject="user", predicate="likes", object="coffee")
+    b = Triple(subject="user", predicate="likes", object="tea")
+    result = validator.validate([a, b], TENANT)
+    assert len(result.accepted) == 2
+    assert result.contradiction_candidates == []  # "likes" est multi-valué
+
+
 # --- should_promote (critère explicite) ------------------------------------- #
 def test_promote_permanent_immediately():
     t = Triple(subject="user", predicate="has_name", object="Alice", permanent=True)
