@@ -63,7 +63,7 @@ def test_tools_list_lists_three_tools(client, single_mode):
     )
     assert resp.status_code == 200
     names = {t["name"] for t in resp.json()["result"]["tools"]}
-    assert names == {"memory.recall", "memory.ingest", "memory.correct"}
+    assert names == {"memory_recall", "memory_ingest", "memory_correct"}
 
 
 def test_non_initialize_requires_session(client, single_mode):

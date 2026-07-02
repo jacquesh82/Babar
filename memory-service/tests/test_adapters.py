@@ -35,7 +35,7 @@ def test_action_openapi_schema_exposes_only_actions():
 
 
 def test_mcp_declares_three_tools():
-    assert set(mcp_server.TOOLS) == {"memory.recall", "memory.ingest", "memory.correct"}
+    assert set(mcp_server.TOOLS) == {"memory_recall", "memory_ingest", "memory_correct"}
     for spec in mcp_server.TOOLS.values():
         assert callable(spec["handler"])
 

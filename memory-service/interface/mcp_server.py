@@ -6,9 +6,9 @@ commun** et **délègue au service commun** (``interface/common/service``) — a
 logique métier propre.
 
 Outils MCP exposés (mêmes opérations que le REST) :
-  * ``memory.recall``  : question → contexte injectable
-  * ``memory.ingest``  : mémoriser un tour de conversation
-  * ``memory.correct`` : corriger/oublier un souvenir
+  * ``memory_recall``  : question → contexte injectable
+  * ``memory_ingest``  : mémoriser un tour de conversation
+  * ``memory_correct`` : corriger/oublier un souvenir
 
 Transport : **Streamable HTTP** conforme MCP (spec 2024-11-05), monté sur ``/mcp`` :
   * ``POST`` — messages JSON-RPC 2.0 (``initialize`` / ``tools/list`` /
@@ -60,33 +60,35 @@ _SESSIONS: set[str] = set()
 
 
 async def tool_recall(req: RecallRequest) -> RecallResponse:
-    """Outil MCP ``memory.recall``."""
+    """Outil MCP ``memory_recall``."""
     return await service.do_recall(req.tenant, req)
 
 
 async def tool_ingest(req: IngestRequest) -> IngestResponse:
-    """Outil MCP ``memory.ingest``."""
+    """Outil MCP ``memory_ingest``."""
     return await service.do_ingest(req.tenant, req)
 
 
 async def tool_correct(req: CorrectionRequest) -> CorrectionResponse:
-    """Outil MCP ``memory.correct``."""
+    """Outil MCP ``memory_correct``."""
     return await service.do_correct(req.tenant, req)
 
 
 # Déclaration des outils (nom → handler + schéma d'entrée + description).
+# NB: les noms d'outils MCP doivent matcher ^[a-zA-Z0-9_-]{1,64}$ (contrainte des
+# clients, dont Claude) → underscore, pas de point.
 TOOLS: dict[str, dict[str, Any]] = {
-    "memory.recall": {
+    "memory_recall": {
         "handler": tool_recall,
         "input_model": RecallRequest,
         "description": "Récupère un contexte mémoire pertinent pour une question.",
     },
-    "memory.ingest": {
+    "memory_ingest": {
         "handler": tool_ingest,
         "input_model": IngestRequest,
         "description": "Mémorise un tour de conversation (extraction incrémentale).",
     },
-    "memory.correct": {
+    "memory_correct": {
         "handler": tool_correct,
         "input_model": CorrectionRequest,
         "description": "Corrige ou oublie un souvenir explicitement.",
