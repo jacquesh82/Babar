@@ -3,6 +3,7 @@
 L'embedding local est **pur et déterministe** → testé sans backend. Le stockage
 et la recherche ANN nécessitent pgvector (extension) → *skippés* sinon.
 """
+
 from __future__ import annotations
 
 import math
@@ -16,7 +17,7 @@ from storage import db, vector_store
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
-    return sum(x * y for x, y in zip(a, b))  # vecteurs déjà normalisés L2
+    return sum(x * y for x, y in zip(a, b, strict=False))  # vecteurs déjà normalisés L2
 
 
 # --- embedding (pur) -------------------------------------------------------- #

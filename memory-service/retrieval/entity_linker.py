@@ -9,6 +9,7 @@ ou label) des termes significatifs de la question. La liaison sémantique
 (fallback vecteur) et le cache Redis des requêtes fréquentes sont prévus
 (voir TODOs) mais volontairement non branchés au stade fondations.
 """
+
 from __future__ import annotations
 
 import re

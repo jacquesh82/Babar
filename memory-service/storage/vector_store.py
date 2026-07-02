@@ -9,6 +9,7 @@ caractères, normalisé L2) — sans dépendance ni API payante. Il est remplaç
 par un vrai modèle local (ONNX/sentence-transformers) via ``EMBEDDING_BACKEND``
 sans impacter les autres modules (voir TODO).
 """
+
 from __future__ import annotations
 
 import hashlib

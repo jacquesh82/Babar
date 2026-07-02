@@ -1,4 +1,5 @@
 """Test d'intégration du graph_walker (nécessite un Postgres réel — skip sinon)."""
+
 from __future__ import annotations
 
 from uuid import uuid4

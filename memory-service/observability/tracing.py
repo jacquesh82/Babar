@@ -13,6 +13,7 @@ Implémentation actuelle : journalisation structurée via ``logging`` standard.
 La persistance en base (ex: ``contradiction_log``) pour l'audit long terme est
 laissée en TODO — le contrat d'appel, lui, est stable.
 """
+
 from __future__ import annotations
 
 import logging

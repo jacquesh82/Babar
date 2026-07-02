@@ -7,9 +7,10 @@ la bi-temporalité (fermeture d'arête / requête ``as_of``).
 Lancement avec une base : ``docker compose up -d postgres`` puis
 ``DATABASE_URL=postgresql://memory:change-me@localhost:5432/memory pytest``.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -60,7 +61,7 @@ async def test_close_edge_bitemporal_as_of(tenant):
     edge_id = await graph_store.add_edge(tenant, triple)
     subject = await graph_store.upsert_node(tenant, "alice", "alice")
 
-    before_close = datetime.now(timezone.utc)
+    before_close = datetime.now(UTC)
     await graph_store.close_edge(tenant, edge_id, valid_until=before_close)
 
     # Actuellement : l'arête fermée n'apparaît plus.

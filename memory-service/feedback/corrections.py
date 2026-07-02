@@ -11,10 +11,11 @@ La cible est soit explicite (``edge_ids``/``node_ids``), soit décrite en langag
 naturel (résolue via ``entity_linker`` + ``graph_walker``). Toute correction est
 tracée pour l'audit.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from interface.common.schemas import (
     CorrectionAction,
@@ -44,7 +45,7 @@ async def _resolve_target_edges(tenant: TenantContext, req: CorrectionRequest) -
 async def apply_correction(tenant: TenantContext, req: CorrectionRequest) -> CorrectionResponse:
     """Applique une correction utilisateur sur la mémoire du tenant."""
     trace_id = new_trace_id()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     edge_ids = await _resolve_target_edges(tenant, req)
     affected_edges = 0
     affected_nodes = 0

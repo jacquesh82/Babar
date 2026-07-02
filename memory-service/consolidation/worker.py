@@ -9,6 +9,7 @@ Le choix de l'ordonnanceur (Celery vs arq) est ISOLÉ ici et n'impacte aucun
 autre module. Ce fichier fournit un ``main`` minimal exécutable par
 ``python -m consolidation.worker`` (voir docker-compose service ``worker``).
 """
+
 from __future__ import annotations
 
 import asyncio

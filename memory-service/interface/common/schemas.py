@@ -10,6 +10,7 @@ un provider (pas de format de message Anthropic/OpenAI/… ici). Les adaptateurs
 dans ``interface/`` sont seuls responsables de traduire *ces* schémas vers/depuis
 le format natif du provider.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -34,6 +35,7 @@ class NodeType(str, Enum):
 
 class Provenance(str, Enum):
     """D'où vient une donnée, pour l'audit — jamais quel LLM la consomme."""
+
     CONVERSATION = "conversation"
     IMPORT = "import"
     USER_CORRECTION = "user_correction"
@@ -46,6 +48,7 @@ class TenantContext(BaseModel):
     Présent sur toute requête entrante ; garantit qu'aucune opération ne
     traverse la frontière d'un tenant.
     """
+
     tenant_id: UUID
     user_id: UUID | None = None
 
@@ -55,6 +58,7 @@ class TenantContext(BaseModel):
 # --------------------------------------------------------------------------- #
 class Triple(BaseModel):
     """Fait élémentaire sujet-prédicat-objet, avec métadonnées de mémoire."""
+
     subject: str
     predicate: str
     object: str
@@ -68,6 +72,7 @@ class Triple(BaseModel):
 
 class IngestRequest(BaseModel):
     """Ingestion incrémentale : un tour de conversation → triples candidats."""
+
     tenant: TenantContext
     # Soit du texte brut à extraire, soit des triples déjà formés.
     turn_text: str | None = None
@@ -77,8 +82,8 @@ class IngestRequest(BaseModel):
 
 class IngestResponse(BaseModel):
     accepted: int
-    buffered: int          # posés en short-term (Redis) en attente de promotion
-    rejected: int          # écartés par le validator (doublon / incohérence)
+    buffered: int  # posés en short-term (Redis) en attente de promotion
+    rejected: int  # écartés par le validator (doublon / incohérence)
     detail: list[str] = Field(default_factory=list)
 
 
@@ -87,6 +92,7 @@ class IngestResponse(BaseModel):
 # --------------------------------------------------------------------------- #
 class RecallRequest(BaseModel):
     """Question du LLM cible → contexte mémoire à injecter."""
+
     tenant: TenantContext
     query: str
     # Budget de tokens STRICT respecté par le linearizer (contrainte #6).
@@ -98,7 +104,8 @@ class RecallRequest(BaseModel):
 
 class MemoryItem(BaseModel):
     """Un fait retenu, avec la trace de *pourquoi* il a été sélectionné."""
-    text: str                          # forme naturelle linéarisée
+
+    text: str  # forme naturelle linéarisée
     score: float
     node_ids: list[UUID] = Field(default_factory=list)
     edge_ids: list[UUID] = Field(default_factory=list)
@@ -112,6 +119,7 @@ class RecallResponse(BaseModel):
     ``context`` est directement injectable dans le prompt du LLM cible.
     ``items`` et ``trace_id`` servent au debug/audit, pas au provider.
     """
+
     context: str
     items: list[MemoryItem] = Field(default_factory=list)
     tokens_used: int = 0
@@ -123,9 +131,9 @@ class RecallResponse(BaseModel):
 # Feedback (corrections explicites) — "forget that I…"
 # --------------------------------------------------------------------------- #
 class CorrectionAction(str, Enum):
-    FORGET = "forget"          # invalide (valid_until = now), conserve pour audit
+    FORGET = "forget"  # invalide (valid_until = now), conserve pour audit
     HARD_DELETE = "hard_delete"  # suppression RGPD (droit à l'oubli)
-    UPDATE = "update"          # remplace la valeur d'un fait
+    UPDATE = "update"  # remplace la valeur d'un fait
 
 
 class CorrectionRequest(BaseModel):
@@ -135,7 +143,7 @@ class CorrectionRequest(BaseModel):
     edge_ids: list[UUID] = Field(default_factory=list)
     node_ids: list[UUID] = Field(default_factory=list)
     natural_language: str | None = None
-    replacement: Triple | None = None   # requis si action == UPDATE
+    replacement: Triple | None = None  # requis si action == UPDATE
 
 
 class CorrectionResponse(BaseModel):

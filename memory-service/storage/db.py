@@ -4,11 +4,12 @@ Fournit un pool partagé, initialisé paresseusement. Les modules de storage
 acquièrent une connexion via ``acquire()`` (context manager) ou utilisent
 directement le pool. Le worker et l'API partagent la même configuration DSN.
 """
+
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 import asyncpg
 
@@ -19,12 +20,8 @@ _pool: asyncpg.Pool | None = None
 
 async def _init_connection(conn: asyncpg.Connection) -> None:
     """Configure chaque connexion : codec JSON/JSONB + type vector (pgvector)."""
-    await conn.set_type_codec(
-        "jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
-    )
-    await conn.set_type_codec(
-        "json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
-    )
+    await conn.set_type_codec("jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog")
+    await conn.set_type_codec("json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog")
     # pgvector : enregistre le type ``vector`` (liste Python ↔ vector). Best-effort
     # pour que le pool reste utilisable même sans l'extension (fonctions de graphe).
     try:

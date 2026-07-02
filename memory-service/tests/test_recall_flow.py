@@ -3,6 +3,7 @@
 Couvre le read path bout-en-bout : ingestion d'arêtes → ``entity_linker`` →
 ``graph_walker`` → ``scorer`` → ``linearizer``, via l'endpoint applicatif.
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -24,7 +25,9 @@ async def tenant():
 
 
 async def test_recall_returns_relevant_context(tenant):
-    await graph_store.add_edge(tenant, Triple(subject="alice", predicate="lives_in", object="paris"))
+    await graph_store.add_edge(
+        tenant, Triple(subject="alice", predicate="lives_in", object="paris")
+    )
     await graph_store.add_edge(tenant, Triple(subject="alice", predicate="likes", object="coffee"))
 
     req = RecallRequest(tenant=tenant, query="Where does alice live?", token_budget=200)

@@ -3,6 +3,7 @@
 Toutes les valeurs proviennent de variables d'environnement (voir ``.env.example``).
 Aucun secret n'est codé en dur. Ce module est importable par l'app et le worker.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache

@@ -12,13 +12,14 @@ Critère de promotion (explicite, contrainte #… "critère de promotion") :
 Stockage : un hash Redis par tenant ``mem:buffer:{tenant_id}`` dont chaque champ
 (empreinte du triple) porte ``{triple, count, first_seen}``.
 """
+
 from __future__ import annotations
 
 import json
 import time
 
-from interface.common.schemas import TenantContext, Triple
 from config import settings
+from interface.common.schemas import TenantContext, Triple
 
 _PROMOTE_MIN_OCCURRENCES = 3
 _PROMOTE_MIN_AGE_S = 3600.0

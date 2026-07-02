@@ -18,6 +18,7 @@ outils et reste à relier au transport MCP réel (TODO). Le ``TenantContext`` es
 pris du corps de requête ici ; à terme il proviendra de la session MCP
 authentifiée (TODO).
 """
+
 from __future__ import annotations
 
 from interface.common import service

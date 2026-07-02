@@ -1,4 +1,5 @@
 """Tests unitaires du linearizer (sélection gloutonne budgétée, sans DB)."""
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -17,7 +18,7 @@ def _fact(text: str, s: float) -> ScoredFact:
 def test_count_tokens_heuristic():
     assert count_tokens("") == 0
     assert count_tokens("a") == 1
-    assert count_tokens("abcd") == 1        # 4 chars ≈ 1 token
+    assert count_tokens("abcd") == 1  # 4 chars ≈ 1 token
     assert count_tokens("abcde") == 2
 
 
@@ -54,8 +55,8 @@ def test_budget_smaller_than_first_fact_selects_nothing():
 
 def test_selection_stops_at_first_overflow():
     # Deux faits de coût connu ; budget laisse passer seulement le premier.
-    big = _fact("x" * 40, 0.9)          # ~10 tokens
-    small = _fact("y" * 4, 0.5)         # ~1 token
+    big = _fact("x" * 40, 0.9)  # ~10 tokens
+    small = _fact("y" * 4, 0.5)  # ~1 token
     budget = count_tokens(verbalize(big))  # juste de quoi le premier
     resp = linearize(TENANT, [big, small], token_budget=budget)
     assert len(resp.items) == 1

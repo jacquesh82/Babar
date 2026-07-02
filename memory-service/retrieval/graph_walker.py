@@ -11,6 +11,7 @@ arêtes valides à cette date.
 Produit des "candidats" enrichis (labels résolus, distance en sauts, chemin
 d'activation) directement consommables par ``retrieval/scorer``.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

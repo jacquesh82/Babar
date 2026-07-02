@@ -8,6 +8,7 @@ comportement entre Claude (MCP), ChatGPT (Action) et REST direct.
 Découplage #1 : seul endroit autorisé à connaître les spécificités d'OpenAI
 Actions ; rien de propriétaire ne descend dans le domaine.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends

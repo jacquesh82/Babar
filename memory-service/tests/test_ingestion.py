@@ -2,6 +2,7 @@
 
 Purs — sans Redis ni DB.
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -26,8 +27,8 @@ def test_extractor_pulls_personal_facts():
 def test_extractor_marks_permanence():
     triples = extractor.extract_triples("My name is Bob. I live in Berlin.", TENANT)
     by_pred = {t.predicate: t for t in triples}
-    assert by_pred["has_name"].permanent is True          # nom = permanent
-    assert by_pred["lives_in"].permanent is False         # résidence = situationnel
+    assert by_pred["has_name"].permanent is True  # nom = permanent
+    assert by_pred["lives_in"].permanent is False  # résidence = situationnel
     assert by_pred["lives_in"].decay_rate > 0.0
 
 

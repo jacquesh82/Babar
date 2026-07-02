@@ -11,6 +11,7 @@ remplacement par un modèle d'extraction (local de préférence) est prévu (TOD
 La politique de rétention est déduite du motif : un nom / lieu de naissance est
 ``permanent``, une préférence ou un lieu de résidence est *situationnel* (decay).
 """
+
 from __future__ import annotations
 
 import re
@@ -23,11 +24,31 @@ _SELF = "user"
 # (regex, prédicat, permanent, decay_rate). Objet capturé dans le groupe 1.
 _PATTERNS: list[tuple[re.Pattern[str], str, bool, float]] = [
     (re.compile(r"\bmy name is ([\w][\w'’-]*)", re.I), "has_name", True, 0.0),
-    (re.compile(r"\bi was born (?:in|on) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "born_in", True, 0.0),
+    (
+        re.compile(r"\bi was born (?:in|on) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I),
+        "born_in",
+        True,
+        0.0,
+    ),
     (re.compile(r"\bi(?:'m| am) (\d{1,3}) years old", re.I), "has_age", False, 0.1),
-    (re.compile(r"\bi (?:live|living) in ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "lives_in", False, 0.05),
-    (re.compile(r"\bi (?:work|working) (?:at|for) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "works_at", False, 0.05),
-    (re.compile(r"\bi (?:like|love|enjoy) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "likes", False, 0.05),
+    (
+        re.compile(r"\bi (?:live|living) in ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I),
+        "lives_in",
+        False,
+        0.05,
+    ),
+    (
+        re.compile(r"\bi (?:work|working) (?:at|for) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I),
+        "works_at",
+        False,
+        0.05,
+    ),
+    (
+        re.compile(r"\bi (?:like|love|enjoy) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I),
+        "likes",
+        False,
+        0.05,
+    ),
 ]
 
 

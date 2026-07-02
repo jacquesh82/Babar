@@ -3,6 +3,7 @@
 Couvre ``/v1/ingest`` : texte → extraction → buffer short-term, puis relecture
 du buffer et sélection des faits promouvables.
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -12,7 +13,6 @@ import pytest
 from interface.api_rest import ingest
 from interface.common.schemas import IngestRequest, TenantContext
 from storage import buffer_store
-
 
 pytestmark = pytest.mark.asyncio
 

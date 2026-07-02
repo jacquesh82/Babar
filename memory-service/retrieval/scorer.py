@@ -13,6 +13,7 @@ pondérations sont configurables ; les composantes sont conservées dans
 
 Fonction **pure et déterministe** (``now`` injectable) — testable sans DB.
 """
+
 from __future__ import annotations
 
 import math
@@ -38,7 +39,7 @@ _DEFAULT_HALF_LIFE_DAYS = 30.0
 class ScoredFact:
     edge_id: UUID | None
     node_ids: list[UUID]
-    text: str                       # forme brute du fait (non encore linéarisée)
+    text: str  # forme brute du fait (non encore linéarisée)
     score: float
     # Décomposition du score pour l'observabilité (pourquoi ce fait, ce rang).
     components: dict[str, float] = field(default_factory=dict)
@@ -79,12 +80,12 @@ def score(
     """
     w = {**DEFAULT_WEIGHTS, **(weights or {})}
     w_sum = sum(w.values()) or 1.0
-    vec = {node_id: sim for node_id, sim in (vector_candidates or [])}
+    vec = dict(vector_candidates or [])
 
     facts: list[ScoredFact] = []
     for cand in graph_candidates:
         hops = int(cand.get("hops", 1))
-        proximity = 1.0 / (1.0 + max(hops - 1, 0))          # hops=1 → 1.0, hops=2 → 0.5
+        proximity = 1.0 / (1.0 + max(hops - 1, 0))  # hops=1 → 1.0, hops=2 → 0.5
         similarity = max(
             vec.get(cand.get("subject_id"), 0.0),
             vec.get(cand.get("object_id"), 0.0),

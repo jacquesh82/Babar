@@ -1,0 +1,28 @@
+[project]
+name = "memory-service"
+version = "0.1.0"
+description = "Mémoire persistante en graphe, agnostique du LLM consommateur."
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["storage/migrations"]
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I isort, UP pyupgrade, B bugbear, C4 comprehensions.
+select = ["E", "W", "F", "I", "UP", "B", "C4"]
+ignore = [
+    "E501",   # longueur de ligne gérée par le formateur
+    "B008",   # Depends(...) en défaut d'argument = idiome FastAPI
+    "UP042",  # `str, Enum` reste un idiome valide (StrEnum change str())
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = ["B011"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

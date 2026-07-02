@@ -9,6 +9,7 @@ Rappel contrainte non négociable #5 : l'isolation est aussi garantie **au nivea
 base** (``tenant_id NOT NULL`` + index par tenant, cf. migration). Ce module est
 la première ligne de défense applicative ; la base est le filet de sécurité.
 """
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -87,6 +88,10 @@ def assert_same_tenant(ctx: TenantContext, resource_tenant_id: UUID | str | None
     """
     if resource_tenant_id is None:
         raise TenantIsolationError("ressource sans tenant_id")
-    resource_uuid = resource_tenant_id if isinstance(resource_tenant_id, UUID) else UUID(str(resource_tenant_id))
+    resource_uuid = (
+        resource_tenant_id
+        if isinstance(resource_tenant_id, UUID)
+        else UUID(str(resource_tenant_id))
+    )
     if resource_uuid != ctx.tenant_id:
         raise TenantIsolationError("accès inter-tenant refusé")

@@ -1,4 +1,5 @@
 """Tests unitaires de l'isolation multi-tenant (cœur pur, sans DB ni réseau)."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -49,8 +50,8 @@ def test_unknown_mode_rejected():
 
 def test_assert_same_tenant_allows_matching():
     ctx = TenantContext(tenant_id=TENANT_A)
-    assert_same_tenant(ctx, TENANT_A)            # ne lève pas
-    assert_same_tenant(ctx, str(TENANT_A))       # accepte aussi la forme str
+    assert_same_tenant(ctx, TENANT_A)  # ne lève pas
+    assert_same_tenant(ctx, str(TENANT_A))  # accepte aussi la forme str
 
 
 def test_assert_same_tenant_blocks_cross_tenant():

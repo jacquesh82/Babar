@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: memory-service
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Image pgvector : l'extension `vector` est disponible → tous les tests
+        # (y compris la recherche ANN) tournent, aucun skip.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: memory
+          POSTGRES_PASSWORD: change-me
+          POSTGRES_DB: memory
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U memory -d memory"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://memory:change-me@localhost:5432/memory
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pgvector
+      - name: Apply migrations
+        env:
+          PGPASSWORD: change-me
+        run: |
+          for f in storage/migrations/*.sql; do
+            echo "Applying $f"
+            psql -h localhost -U memory -d memory -v ON_ERROR_STOP=1 -f "$f"
+          done
+      - name: Run tests
+        run: pytest -q

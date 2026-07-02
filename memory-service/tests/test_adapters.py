@@ -4,6 +4,7 @@ Vérifie que les trois connecteurs (REST, OpenAI Action, MCP) partagent le même
 service commun et ne divergent pas. Les vérifications de câblage sont pures ; un
 test d'intégration confirme la délégation bout-en-bout (skip sans Postgres).
 """
+
 from __future__ import annotations
 
 from uuid import uuid4
@@ -30,7 +31,7 @@ def test_action_openapi_schema_exposes_only_actions():
     schema = openai_action.openapi_schema()
     paths = set(schema["paths"])
     assert "/actions/recall" in paths
-    assert all(p.startswith("/actions/") for p in paths)   # pas d'endpoint interne exposé
+    assert all(p.startswith("/actions/") for p in paths)  # pas d'endpoint interne exposé
 
 
 def test_mcp_declares_three_tools():

@@ -8,9 +8,9 @@ Les invariants de decay (permanent vs situationnel) sont testés de façon **pur
 (contradiction loguée, audit bi-temporel, forget) nécessitent un Postgres réel
 et se *skippent* automatiquement sinon.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -67,7 +67,9 @@ async def test_contradiction_is_logged_never_silent(tenant):
     from consolidation.merger import resolve_contradictions
 
     await graph_store.add_edge(tenant, Triple(subject="user", predicate="lives_in", object="paris"))
-    await graph_store.add_edge(tenant, Triple(subject="user", predicate="lives_in", object="london"))
+    await graph_store.add_edge(
+        tenant, Triple(subject="user", predicate="lives_in", object="london")
+    )
 
     report = await resolve_contradictions(tenant)
     assert report.contradictions_resolved >= 1
@@ -82,7 +84,7 @@ async def test_contradiction_is_logged_never_silent(tenant):
             tenant.tenant_id,
         )
     assert logged >= 1
-    assert open_edges == 1     # un seul lieu de résidence reste valide
+    assert open_edges == 1  # un seul lieu de résidence reste valide
 
 
 @pytest.mark.asyncio
@@ -90,8 +92,12 @@ async def test_permanent_survives_decay_cycle_in_db(tenant):
     """Un fait permanent conserve son importance après apply_decay ; un situationnel baisse."""
     from consolidation.decay import apply_decay
 
-    await graph_store.add_edge(tenant, Triple(subject="user", predicate="has_name", object="alice", permanent=True))
-    await graph_store.add_edge(tenant, Triple(subject="user", predicate="lives_in", object="paris", decay_rate=0.1))
+    await graph_store.add_edge(
+        tenant, Triple(subject="user", predicate="has_name", object="alice", permanent=True)
+    )
+    await graph_store.add_edge(
+        tenant, Triple(subject="user", predicate="lives_in", object="paris", decay_rate=0.1)
+    )
 
     report = await apply_decay(tenant)
     assert report.skipped_permanent >= 1

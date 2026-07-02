@@ -6,6 +6,7 @@ question même sans lien de graphe direct avec les entités identifiées.
 Délègue à ``storage/vector_store`` : orchestre embedding(question) → search et
 renvoie des similarités normalisées [0, 1] pour le ``scorer``.
 """
+
 from __future__ import annotations
 
 from uuid import UUID

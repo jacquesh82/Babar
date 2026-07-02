@@ -12,6 +12,7 @@ portée par les données elles-mêmes :
 
 Aucune fonction globale n'est appliquée aveuglément à toutes les lignes.
 """
+
 from __future__ import annotations
 
 import math

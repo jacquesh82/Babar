@@ -10,6 +10,7 @@ compactés) et résolution des pronoms à la première personne vers l'entité
 ``user``. La désambiguïsation contextuelle avancée (embeddings + type) est
 prévue (TODO).
 """
+
 from __future__ import annotations
 
 import re

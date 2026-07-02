@@ -10,6 +10,7 @@ Source de vérité long-term. Toutes les opérations sont **scopées par tenant*
 Mappe les tables ``memory_nodes`` / ``memory_edges`` (voir
 ``storage/migrations/0001_init.sql``).
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -102,9 +103,7 @@ async def add_edge(tenant: TenantContext, triple: Triple) -> UUID:
         )
 
 
-async def close_edge(
-    tenant: TenantContext, edge_id: UUID, valid_until: datetime
-) -> None:
+async def close_edge(tenant: TenantContext, edge_id: UUID, valid_until: datetime) -> None:
     """Ferme temporellement une arête (fin de validité) sans la supprimer.
 
     Utilisé pour les corrections "forget" et la résolution de contradiction.
@@ -158,9 +157,7 @@ async def neighbors(
         return [dict(r) for r in rows]
 
 
-async def find_nodes(
-    tenant: TenantContext, terms: list[str], limit: int = 10
-) -> list[UUID]:
+async def find_nodes(tenant: TenantContext, terms: list[str], limit: int = 10) -> list[UUID]:
     """Retourne les nœuds du tenant dont ``canonical_key`` ou ``label`` matche
     (insensible à la casse) l'un des ``terms``. Support de l'``entity_linker``.
     """
@@ -182,9 +179,7 @@ async def find_nodes(
         return [r["id"] for r in rows]
 
 
-async def hard_delete(
-    tenant: TenantContext, node_ids: list[UUID], edge_ids: list[UUID]
-) -> int:
+async def hard_delete(tenant: TenantContext, node_ids: list[UUID], edge_ids: list[UUID]) -> int:
     """Suppression définitive (droit à l'oubli RGPD). Retourne le nb de lignes.
 
     Supprime d'abord les arêtes ciblées, puis les nœuds ciblés (le CASCADE de la

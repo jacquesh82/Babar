@@ -7,6 +7,7 @@ métier. Aucune divergence entre connecteurs.
 
 Découplage #1 : cet adaptateur ne connaît aucun LLM ; il parle le contrat commun.
 """
+
 from __future__ import annotations
 
 from fastapi import Depends, FastAPI

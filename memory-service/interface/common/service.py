@@ -8,9 +8,10 @@ données) : ensemble, ils garantissent qu'aucun adaptateur ne diverge.
 Le ``TenantContext`` passé est celui **résolu par l'authentification** (source de
 vérité), jamais celui potentiellement présent dans le corps de requête client.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from context_builder.linearizer import linearize
 from feedback import corrections
@@ -54,7 +55,7 @@ async def do_ingest(tenant: TenantContext, req: IngestRequest) -> IngestResponse
 async def do_recall(tenant: TenantContext, req: RecallRequest) -> RecallResponse:
     """Question → contexte mémoire injectable (activation par graphe)."""
     trace_id = new_trace_id()
-    now = req.as_of or datetime.now(timezone.utc)
+    now = req.as_of or datetime.now(UTC)
 
     seeds = await entity_linker.link(tenant, req.query)
     if not seeds:

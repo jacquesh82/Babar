@@ -14,6 +14,7 @@ La stratégie ``llm_arbitration`` est prévue mais retombe pour l'instant sur LW
 Contrainte non négociable #4 : TOUTE contradiction traitée est **loguée**
 (``contradiction_log`` + ``observability/tracing``), jamais résolue silencieusement.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -29,7 +30,7 @@ _FUNCTIONAL_PREDICATES = ["has_name", "has_age", "lives_in", "born_in", "works_a
 
 
 class ContradictionStrategy(str, Enum):
-    LWW = "lww"                       # dernière-écriture-gagne (défaut)
+    LWW = "lww"  # dernière-écriture-gagne (défaut)
     LLM_ARBITRATION = "llm_arbitration"
 
 
@@ -102,7 +103,7 @@ async def resolve_contradictions(
             for row in rows:
                 groups.setdefault((row["subject_id"], row["predicate"]), []).append(row)
 
-            for (subject_id, predicate), edges in groups.items():
+            for (_subject_id, predicate), edges in groups.items():
                 kept = edges[0]
                 for dropped in edges[1:]:
                     if dropped["object_id"] == kept["object_id"]:

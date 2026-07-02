@@ -12,6 +12,7 @@ fait qui déborderait.
 Contrainte de découplage #1 : la sortie est du **texte + métadonnées légères**
 (``RecallResponse``), jamais une structure propriétaire à un provider.
 """
+
 from __future__ import annotations
 
 import math

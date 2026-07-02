@@ -7,6 +7,7 @@ résolus (coréférence faite en amont dans ``coref_resolver.py``) et :
   * (à venir) marque les contradictions *potentielles* pour arbitrage par le
     worker de consolidation — la validation ne tranche pas les contradictions.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
