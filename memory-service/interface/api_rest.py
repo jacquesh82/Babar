@@ -94,7 +94,9 @@ async def correct(
     return await service.do_correct(tenant, req)
 
 
-# Montage de l'adaptateur OpenAI Action (mêmes schémas, même domaine commun).
+# Montage des adaptateurs (mêmes schémas, même domaine commun).
+from interface.mcp_server import build_mcp_server  # noqa: E402
 from interface.openai_action import router as _action_router  # noqa: E402
 
 app.include_router(_action_router)
+app.include_router(build_mcp_server())
