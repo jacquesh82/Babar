@@ -18,13 +18,21 @@ _pool: asyncpg.Pool | None = None
 
 
 async def _init_connection(conn: asyncpg.Connection) -> None:
-    """Configure chaque connexion : codec JSON/JSONB transparent."""
+    """Configure chaque connexion : codec JSON/JSONB + type vector (pgvector)."""
     await conn.set_type_codec(
         "jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
     )
     await conn.set_type_codec(
         "json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
     )
+    # pgvector : enregistre le type ``vector`` (liste Python ↔ vector). Best-effort
+    # pour que le pool reste utilisable même sans l'extension (fonctions de graphe).
+    try:
+        from pgvector.asyncpg import register_vector
+
+        await register_vector(conn)
+    except Exception:
+        pass
 
 
 async def get_pool() -> asyncpg.Pool:

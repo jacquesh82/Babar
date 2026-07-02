@@ -30,14 +30,27 @@ def _terms(query: str) -> list[str]:
 async def link(tenant: TenantContext, query: str, limit: int = 10) -> list[UUID]:
     """Retourne les ids de nœuds candidats servant de points d'entrée.
 
-    TODO:
-        - Fallback vecteur (``vector_search.search``) si aucune entité exacte.
-        - Cache Redis clé = hash(tenant, query normalisée) → ``cache_get``.
+    Ordre : cache → correspondance exacte → **fallback sémantique** (vecteur).
+    Le fallback est best-effort : indisponible sans pgvector, il retourne alors
+    simplement la liste exacte (éventuellement vide).
+
+    TODO: cache Redis clé = hash(tenant, query normalisée) → ``cache_get``.
     """
     cached = await cache_get(tenant, query)
     if cached is not None:
         return cached
-    return await find_nodes(tenant, _terms(query), limit=limit)
+
+    exact = await find_nodes(tenant, _terms(query), limit=limit)
+    if exact:
+        return exact
+
+    try:  # fallback sémantique si aucune entité exacte
+        from retrieval import vector_search
+
+        hits = await vector_search.search(tenant, query, top_k=limit)
+        return [node_id for node_id, _ in hits]
+    except Exception:
+        return exact
 
 
 async def cache_get(tenant: TenantContext, query: str) -> list[UUID] | None:

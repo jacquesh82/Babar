@@ -61,7 +61,16 @@ async def do_recall(tenant: TenantContext, req: RecallRequest) -> RecallResponse
         return RecallResponse(context="", token_budget=req.token_budget, trace_id=trace_id)
 
     walk = await graph_walker.walk(tenant, seeds, max_hops=req.max_hops, as_of=req.as_of)
-    facts = scorer.score(tenant, walk.edges, vector_candidates=None, now=now)
+
+    vector_candidates = None
+    try:  # similarité sémantique pour affiner le scoring (best-effort sans pgvector)
+        from retrieval import vector_search
+
+        vector_candidates = await vector_search.search(tenant, req.query, top_k=20)
+    except Exception:
+        vector_candidates = None
+
+    facts = scorer.score(tenant, walk.edges, vector_candidates=vector_candidates, now=now)
     response = linearize(tenant, facts, req.token_budget, trace_id=trace_id)
 
     selected_ids = {i.edge_ids[0] for i in response.items if i.edge_ids}

@@ -64,6 +64,12 @@ async def run_consolidation_cycle() -> CycleReport:
     for tenant_id in await _active_tenants():
         tenant = TenantContext(tenant_id=tenant_id)
         report.promoted += await promote_tenant(tenant)
+        try:  # indexation vectorielle des nouveaux nœuds (best-effort sans pgvector)
+            from storage import vector_store
+
+            await vector_store.reindex_tenant(tenant)
+        except Exception:
+            logger.warning("réindexation vectorielle indisponible", exc_info=True)
         report.merged_edges += (await merger.merge_duplicates(tenant)).merged_edges
         report.contradictions_resolved += (
             await merger.resolve_contradictions(tenant, strategy)

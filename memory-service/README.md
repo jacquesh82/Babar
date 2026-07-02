@@ -38,13 +38,20 @@ Actions/OpenAPI pour ChatGPT, REST en fallback).
 >   `mcp_server`) délèguent tous au **service commun** (`interface/common/service.py`)
 >   → aucune divergence. Le router Action est monté sur l'app REST ; le runtime
 >   MCP concret reste à brancher (les handlers d'outils sont prêts).
+> - **Vector search** : embeddings pgvector (`storage/vector_store.py`) avec un
+>   backend d'embedding **local déterministe** (provider-agnostic) ; recherche ANN
+>   cosinus scopée tenant (`retrieval/vector_search.py`) ; **fallback sémantique**
+>   branché dans `entity_linker` (si aucune entité exacte) et dans le scoring de
+>   `recall`. Réindexation des nouveaux nœuds par le worker. Tout est *best-effort* :
+>   sans pgvector, le pipeline fonctionne en mode graphe seul.
 >
-> Restent en stub : extraction par modèle (LLM local), `storage/vector_store`
-> (pgvector) + fallback vectoriel, runtime MCP concret.
+> Restent en stub : extraction par modèle (LLM local), runtime MCP concret,
+> cache Redis des requêtes fréquentes (`entity_linker.cache_get`).
 >
-> Tests : `pytest` → **39 unitaires (purs) verts** ; les tests d'intégration
+> Tests : `pytest` → **45 unitaires (purs) verts** ; les tests d'intégration
 > DB/Redis se *skippent* automatiquement sans backend joignable, et passent
-> (**56/56**) avec Postgres + Redis (`docker compose up -d postgres redis`).
+> (**62/63**, le dernier requérant pgvector) avec Postgres + Redis
+> (`docker compose up -d postgres redis`).
 
 ---
 
