@@ -12,10 +12,12 @@ la première ligne de défense applicative ; la base est le filet de sécurité.
 
 from __future__ import annotations
 
+import time
 from uuid import UUID
 
 from fastapi import Header
 
+from auth.jwt_utils import JWTError, decode_hs256
 from config import settings
 from interface.common.schemas import TenantContext
 
@@ -58,10 +60,32 @@ def resolve_tenant_context(
         return TenantContext(tenant_id=_parse_uuid(tenant_header, "X-Tenant-Id"))
 
     if mode == "jwt":
-        # TODO: décoder/vérifier le JWT (lib + secret) et en extraire tenant_id/user_id.
-        raise TenantIsolationError("mode JWT non encore implémenté")
+        return _tenant_from_jwt(authorization)
 
     raise TenantIsolationError(f"TENANT_MODE inconnu : {mode!r}")
+
+
+def _tenant_from_jwt(authorization: str | None) -> TenantContext:
+    """Extrait le tenant d'un ``Authorization: Bearer <jwt>`` HS256 vérifié."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise TenantIsolationError("header Authorization Bearer manquant")
+    if not settings.jwt_secret:
+        raise TenantIsolationError("JWT_SECRET non configuré")
+
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        claims = decode_hs256(token, settings.jwt_secret, now=time.time())
+    except JWTError as exc:
+        raise TenantIsolationError(f"JWT invalide : {exc}") from exc
+
+    tenant_value = claims.get(settings.jwt_tenant_claim)
+    if not tenant_value:
+        raise TenantIsolationError(f"claim tenant '{settings.jwt_tenant_claim}' absent")
+    user_value = claims.get(settings.jwt_user_claim)
+    return TenantContext(
+        tenant_id=_parse_uuid(str(tenant_value), "claim tenant"),
+        user_id=_parse_uuid(str(user_value), "claim user") if user_value else None,
+    )
 
 
 async def resolve_tenant(

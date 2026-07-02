@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # --- Multi-tenant : "header" | "jwt" | "single" ---
     tenant_mode: str = "header"
 
+    # --- Auth JWT (mode tenant_mode="jwt") ---
+    jwt_secret: str = ""
+    jwt_algorithm: str = "HS256"
+    jwt_tenant_claim: str = "tenant_id"
+    jwt_user_claim: str = "user_id"
+
     @property
     def asyncpg_dsn(self) -> str:
         """DSN utilisable par asyncpg (retire le suffixe de dialecte SQLAlchemy)."""
