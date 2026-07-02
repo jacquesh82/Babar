@@ -28,7 +28,11 @@ async def test_tools_list_exposes_three_tools_with_schema():
     names = {t["name"] for t in resp["result"]["tools"]}
     assert names == {"memory_recall", "memory_ingest", "memory_correct"}
     for tool in resp["result"]["tools"]:
-        assert "inputSchema" in tool and tool["inputSchema"]["type"] == "object"
+        schema = tool["inputSchema"]
+        assert schema["type"] == "object"
+        # `tenant` est injecté depuis le token → jamais exposé/réclamé au LLM.
+        assert "tenant" not in schema.get("properties", {})
+        assert "tenant" not in schema.get("required", [])
 
 
 async def test_unknown_method_is_jsonrpc_error():

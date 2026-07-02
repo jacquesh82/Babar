@@ -97,10 +97,18 @@ TOOLS: dict[str, dict[str, Any]] = {
 
 
 def _descriptor(name: str, spec: dict[str, Any]) -> dict[str, Any]:
+    schema = spec["input_model"].model_json_schema()
+    # Le `tenant` est injecté côté serveur depuis le token OAuth (source de vérité)
+    # et écrase toute valeur cliente : on le RETIRE du schéma exposé au LLM, sinon
+    # le client le réclame à l'utilisateur alors qu'il ne doit jamais le fournir.
+    schema.get("properties", {}).pop("tenant", None)
+    if isinstance(schema.get("required"), list):
+        schema["required"] = [r for r in schema["required"] if r != "tenant"]
+    schema.get("$defs", {}).pop("TenantContext", None)
     return {
         "name": name,
         "description": spec["description"],
-        "inputSchema": spec["input_model"].model_json_schema(),
+        "inputSchema": schema,
     }
 
 
