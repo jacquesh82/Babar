@@ -36,6 +36,38 @@ def test_extractor_empty_when_no_match():
     assert extractor.extract_triples("The weather is nice today.", TENANT) == []
 
 
+def test_extractor_ignores_negation_object():
+    # "my name is not Bob" ne doit pas produire has_name="not".
+    triples = extractor.extract_triples("My name is not Bob.", TENANT)
+    assert all(t.object.lower() != "not" for t in triples)
+
+
+def test_extractor_family_relation():
+    triples = extractor.extract_triples("My sister is Alice. My dog is Rex.", TENANT)
+    by_pred = {t.predicate: t for t in triples}
+    assert by_pred["has_sister"].object == "Alice"
+    assert by_pred["has_sister"].permanent is True
+    assert by_pred["has_dog"].object == "Rex"
+
+
+def test_extractor_job_as():
+    triples = extractor.extract_triples("I work as a nurse.", TENANT)
+    by_pred = {t.predicate: t for t in triples}
+    assert by_pred["works_as"].object == "nurse"
+
+
+def test_extractor_backend_is_pluggable():
+    # Un backend inconnu retombe sur l'heuristique (pas d'échec dur).
+    from config import settings
+
+    original = settings.extraction_backend
+    try:
+        settings.extraction_backend = "does-not-exist"
+        assert extractor.extract_triples("My name is Bob.", TENANT)
+    finally:
+        settings.extraction_backend = original
+
+
 # --- coref_resolver --------------------------------------------------------- #
 def test_canonicalize_maps_first_person_to_user():
     assert coref_resolver.canonicalize("I") == "user"

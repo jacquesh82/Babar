@@ -29,6 +29,25 @@ def canonicalize(mention: str) -> str:
     return _SELF_CANONICAL if text in _SELF_MENTIONS else text
 
 
+def _rules_resolve(
+    triples: list[Triple], tenant: TenantContext, conversation_id: str | None
+) -> list[Triple]:
+    """Backend "rules" : canonicalisation + pronoms 1re personne."""
+    return [
+        triple.model_copy(
+            update={
+                "subject": canonicalize(triple.subject),
+                "object": canonicalize(triple.object),
+            }
+        )
+        for triple in triples
+    ]
+
+
+# Registre pluggable ; un backend modèle (désambiguïsation contextuelle) s'y branche.
+_BACKENDS = {"rules": _rules_resolve}
+
+
 def resolve(
     triples: list[Triple],
     tenant: TenantContext,
@@ -36,23 +55,14 @@ def resolve(
 ) -> list[Triple]:
     """Résout coréférences et alias, renvoie des triples à entités canoniques.
 
-    Args:
-        triples: triples bruts issus de ``extractor``.
-        tenant: contexte d'isolation.
-        conversation_id: contexte de dialogue pour résoudre les pronoms.
+    Dispatche vers ``COREF_BACKEND`` (défaut : ``rules``) ; backend inconnu →
+    retombe sur les règles (jamais d'échec dur).
 
     TODO:
         - Fenêtre de coréférence par ``conversation_id`` (antécédents récents).
         - Désambiguïsation par embedding de contexte + type d'entité.
     """
-    resolved: list[Triple] = []
-    for triple in triples:
-        resolved.append(
-            triple.model_copy(
-                update={
-                    "subject": canonicalize(triple.subject),
-                    "object": canonicalize(triple.object),
-                }
-            )
-        )
-    return resolved
+    from config import settings
+
+    backend = _BACKENDS.get(settings.coref_backend, _rules_resolve)
+    return backend(triples, tenant, conversation_id)

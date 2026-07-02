@@ -26,9 +26,11 @@ class Settings(BaseSettings):
     # --- Redis ---
     redis_url: str = "redis://redis:6379/0"
 
-    # --- Embeddings ---
+    # --- Backends pluggables (seams modèles ; défauts = déterministes/local) ---
     embedding_dim: int = 1536
-    embedding_backend: str = "local"
+    embedding_backend: str = "local"       # storage/vector_store
+    extraction_backend: str = "heuristic"  # ingestion/extractor
+    coref_backend: str = "rules"           # ingestion/coref_resolver
 
     # --- Context builder ---
     context_token_budget: int = 2000
