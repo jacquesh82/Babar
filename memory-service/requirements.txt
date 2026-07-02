@@ -10,7 +10,8 @@ sqlalchemy[asyncio]>=2.0
 pgvector>=0.3
 redis>=5.0
 
-# Worker de consolidation (choix à trancher : décommenter l'un OU l'autre)
+# Worker de consolidation : ordonnanceur stdlib intégré (consolidation/cron.py),
+# aucune dépendance requise. Alternatives possibles si besoin de distribution :
 # celery[redis]>=5.4
 # arq>=0.26
 

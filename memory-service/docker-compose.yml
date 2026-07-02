@@ -25,9 +25,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    # TODO: remplacer par la commande réelle une fois Celery/arq tranché.
-    #   Celery : celery -A consolidation.worker worker --beat
-    #   arq    : arq consolidation.worker.WorkerSettings
+    # Ordonnanceur stdlib intégré : boucle planifiée sur CONSOLIDATION_CRON.
+    # (Un cycle unique : `python -m consolidation.worker --once`.)
     command: python -m consolidation.worker
     env_file: .env
     depends_on:

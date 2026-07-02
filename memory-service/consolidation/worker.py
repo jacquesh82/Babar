@@ -14,11 +14,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import UUID
 
 from config import settings
 from consolidation import decay, merger
+from consolidation.cron import parse_cron, seconds_until_next
 from interface.common.schemas import TenantContext
 from storage import buffer_store, graph_store
 from storage.db import acquire, close_pool
@@ -95,16 +98,40 @@ async def run_consolidation_cycle() -> CycleReport:
     return report
 
 
-def main() -> None:
-    """Entrée CLI. Exécution one-shot ; le scheduler (Celery/arq) reste à brancher.
+async def run_scheduler() -> None:
+    """Boucle de planification : exécute un cycle à chaque occurrence du cron.
 
-    TODO: remplacer par l'ordonnanceur choisi, planifié sur ``CONSOLIDATION_CRON``.
+    Ordonnanceur stdlib (asyncio) piloté par ``CONSOLIDATION_CRON`` — sans
+    dépendance externe. Un ordonnanceur tiers (Celery beat / arq) pourrait le
+    remplacer en appelant ``run_consolidation_cycle`` de la même façon.
+    """
+    cron = parse_cron(settings.consolidation_cron)
+    logger.info("worker démarré, cron=%r", settings.consolidation_cron)
+    while True:
+        delay = seconds_until_next(datetime.now(UTC), cron)
+        logger.info("prochain cycle de consolidation dans %.0fs", delay)
+        await asyncio.sleep(delay)
+        try:
+            await run_consolidation_cycle()
+        except Exception:
+            logger.exception("échec du cycle de consolidation")
+
+
+def main() -> None:
+    """Entrée CLI (``python -m consolidation.worker``).
+
+    Sans argument : boucle planifiée sur ``CONSOLIDATION_CRON``.
+    Avec ``--once`` : exécute un unique cycle puis sort (utile en CI/cron externe).
     """
     logging.basicConfig(level=settings.log_level)
+    run_once = "--once" in sys.argv[1:]
 
     async def _run() -> None:
         try:
-            await run_consolidation_cycle()
+            if run_once:
+                await run_consolidation_cycle()
+            else:
+                await run_scheduler()
         finally:
             await close_pool()
 
