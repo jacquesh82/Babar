@@ -46,8 +46,12 @@ async def test_unknown_tool_is_jsonrpc_error():
 async def test_invalid_arguments_is_jsonrpc_error():
     # arguments manquants (pas de tenant/query) → erreur de validation → -32603
     resp = await mcp_server.handle_jsonrpc(
-        {"jsonrpc": "2.0", "id": 5, "method": "tools/call",
-         "params": {"name": "memory.recall", "arguments": {}}}
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "tools/call",
+            "params": {"name": "memory.recall", "arguments": {}},
+        }
     )
     assert "error" in resp
 

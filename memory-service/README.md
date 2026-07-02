@@ -36,21 +36,29 @@ Actions/OpenAPI pour ChatGPT, REST en fallback).
 >   `update` (ferme l'ancien + ouvre le nouveau) ; cible par ids ou langage naturel.
 > - **Adaptateurs** : les 3 connecteurs (`api_rest`, `openai_action`,
 >   `mcp_server`) délèguent tous au **service commun** (`interface/common/service.py`)
->   → aucune divergence. Le router Action est monté sur l'app REST ; le runtime
->   MCP concret reste à brancher (les handlers d'outils sont prêts).
+>   → aucune divergence. Le router Action et la **surface MCP JSON-RPC** (`/mcp`,
+>   `initialize`/`tools/list`/`tools/call`) sont montés sur l'app REST.
 > - **Vector search** : embeddings pgvector (`storage/vector_store.py`) avec un
 >   backend d'embedding **local déterministe** (provider-agnostic) ; recherche ANN
->   cosinus scopée tenant (`retrieval/vector_search.py`) ; **fallback sémantique**
->   branché dans `entity_linker` (si aucune entité exacte) et dans le scoring de
->   `recall`. Réindexation des nouveaux nœuds par le worker. Tout est *best-effort* :
->   sans pgvector, le pipeline fonctionne en mode graphe seul.
+>   cosinus scopée tenant ; **fallback sémantique** dans `entity_linker` et le
+>   scoring de `recall`. *Best-effort* : sans pgvector, mode graphe seul.
+> - **Auth** : isolation par `X-Tenant-Id`, **JWT HS256** (`auth/jwt_utils.py`,
+>   sans dépendance) ou `single` (dev). Voir §7.
+> - **Cache** : requêtes fréquentes en Redis (`entity_linker`) avec invalidation
+>   sur toute écriture (corrections, consolidation).
+> - **Worker** : **ordonnanceur cron intégré** (`consolidation/cron.py`, stdlib)
+>   piloté par `CONSOLIDATION_CRON`.
+> - **Observabilité** : logs **structlog** + audit persistant des rappels
+>   (`recall_log`) et contradictions (`contradiction_log`).
+> - **Qualité** : lint/format **ruff**, **CI GitHub Actions** (lint + tests avec
+>   Postgres/pgvector + Redis, migrations appliquées).
 >
-> Restent en stub : extraction par modèle (LLM local), runtime MCP concret,
-> cache Redis des requêtes fréquentes (`entity_linker.cache_get`).
+> Seams prêts pour un modèle local (sans changer le reste) : `EXTRACTION_BACKEND`,
+> `COREF_BACKEND`, `EMBEDDING_BACKEND` (défauts déterministes, sans API payante).
 >
-> Tests : `pytest` → **45 unitaires (purs) verts** ; les tests d'intégration
-> DB/Redis se *skippent* automatiquement sans backend joignable, et passent
-> (**62/63**, le dernier requérant pgvector) avec Postgres + Redis
+> Tests : `pytest` → **~70 unitaires (purs) verts** ; les tests d'intégration
+> DB/Redis se *skippent* automatiquement sans backend, et passent (**104/105**,
+> le dernier requérant pgvector) avec Postgres + Redis
 > (`docker compose up -d postgres redis`).
 
 ---
@@ -181,21 +189,48 @@ La migration SQL initiale se trouve dans
 
 Documentation OpenAPI auto-générée : http://localhost:8000/docs
 
-## 6. Arborescence
+Commandes utiles via `make` : `make up` / `down` / `test` / `lint` / `fmt` /
+`migrate` / `worker`.
+
+## 6. Authentification & isolation multi-tenant
+
+Le mode est choisi par `TENANT_MODE` ; chaque requête doit porter un tenant, sans
+quoi elle est rejetée en **401** avant d'atteindre le domaine.
+
+| `TENANT_MODE` | Comment fournir le tenant | Usage |
+|---------------|---------------------------|-------|
+| `header` (défaut) | En-tête `X-Tenant-Id: <uuid>` | Intégrations simples / gateway de confiance |
+| `jwt` | `Authorization: Bearer <JWT HS256>` signé avec `JWT_SECRET` ; claims `JWT_TENANT_CLAIM`/`JWT_USER_CLAIM` | SaaS |
+| `single` | — (tenant de dev fixe) | Développement local uniquement |
+
+L'isolation est aussi garantie **au niveau base** (`tenant_id NOT NULL` + index
+et filtres scopés) : le mode d'auth est la 1ʳᵉ ligne, la base le filet de sécurité.
+
+```bash
+# header
+curl -H "X-Tenant-Id: 11111111-1111-1111-1111-111111111111" \
+     -H "Content-Type: application/json" \
+     -d '{"tenant":{"tenant_id":"11111111-1111-1111-1111-111111111111"},"query":"where do I live?"}' \
+     http://localhost:8000/v1/recall
+```
+
+## 7. Arborescence
 
 ```
 memory-service/
-├── ingestion/        extraction incrémentale de triples, coréférence, validation
-├── storage/          graph_store (bitemp.), vector_store (pgvector), buffer_store (Redis)
-├── retrieval/        entity_linker, graph_walker, vector_search, scorer
-├── consolidation/    merger (contradictions), decay (importance)
+├── ingestion/        extractor (backend pluggable), coref_resolver, validator
+├── storage/          graph_store (bitemp.), vector_store (pgvector), buffer_store,
+│                     db (pool), redis_client, migrations/
+├── retrieval/        entity_linker (+ cache), graph_walker, vector_search, scorer
+├── consolidation/    worker (+ cron), merger (contradictions LWW), decay
 ├── context_builder/  linearizer (sélection budgétée → texte)
 ├── feedback/         corrections explicites ("forget that I…")
-├── interface/        common/schemas + mcp_server + openai_action + api_rest
-├── auth/             tenant_isolation (multi-tenant strict)
-├── observability/    tracing ("pourquoi ce contexte a été injecté ?")
-├── tests/            memory_regression (survie des faits stables)
-├── docker-compose.yml
+├── interface/        common/{schemas,service} + mcp_server + openai_action + api_rest
+├── auth/             tenant_isolation (header/jwt/single), jwt_utils
+├── observability/    tracing (structlog + audit recall_log)
+├── tests/            unitaires purs + intégration + memory_regression
+├── .github/workflows/ci.yml   lint + tests (Postgres/pgvector + Redis)
+├── config.py · pyproject.toml · Makefile · Dockerfile · docker-compose.yml
 ├── .env.example
 └── README.md
 ```

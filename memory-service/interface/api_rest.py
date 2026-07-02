@@ -10,10 +10,9 @@ Découplage #1 : cet adaptateur ne connaît aucun LLM ; il parle le contrat comm
 
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
 
 from auth.tenant_isolation import resolve_tenant
-from config import settings
 from interface.common import service
 from interface.common.schemas import (
     CorrectionRequest,
@@ -34,24 +33,30 @@ app = FastAPI(
 
 
 @app.get("/health", response_model=HealthResponse)
-async def health() -> HealthResponse:
-    """Vérifie la disponibilité Postgres (et Redis si le client est présent)."""
+async def health(response: Response) -> HealthResponse:
+    """Liveness/readiness : pings Postgres + Redis.
+
+    Renvoie **503** si Postgres (source de vérité) est indisponible, afin que les
+    orchestrateurs (compose/k8s) puissent retirer l'instance du service.
+    """
     from storage.db import ping as pg_ping
+    from storage.redis_client import get_redis
 
     postgres_ok = await pg_ping()
 
-    redis_ok = False
-    try:  # Redis optionnel au stade bootstrap : best-effort, non bloquant.
-        import redis.asyncio as aioredis  # type: ignore
-
-        client = aioredis.from_url(settings.redis_url)
-        redis_ok = bool(await client.ping())
-        await client.aclose()
+    try:
+        redis_ok = bool(await get_redis().ping())
     except Exception:
         redis_ok = False
 
-    status = "ok" if postgres_ok else "degraded"
-    return HealthResponse(status=status, postgres=postgres_ok, redis=redis_ok)
+    healthy = postgres_ok and redis_ok
+    if not postgres_ok:
+        response.status_code = 503
+    return HealthResponse(
+        status="ok" if healthy else "degraded",
+        postgres=postgres_ok,
+        redis=redis_ok,
+    )
 
 
 @app.post("/v1/ingest", response_model=IngestResponse)

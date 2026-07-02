@@ -64,7 +64,11 @@ def validate(triples: list[Triple], tenant: TenantContext) -> ValidationResult:
             continue
         seen.add(fingerprint)
 
-        subject, predicate, obj = _norm(triple.subject), _norm(triple.predicate), _norm(triple.object)
+        subject, predicate, obj = (
+            _norm(triple.subject),
+            _norm(triple.predicate),
+            _norm(triple.object),
+        )
         if predicate in _FUNCTIONAL_PREDICATES:
             key = (subject, predicate)
             previous = functional_objects.get(key)

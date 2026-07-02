@@ -77,7 +77,9 @@ async def do_recall(tenant: TenantContext, req: RecallRequest) -> RecallResponse
     selected_ids = {i.edge_ids[0] for i in response.items if i.edge_ids}
     selected = [{"edge_id": str(e)} for e in selected_ids]
     rejected = [{"edge_id": str(f.edge_id)} for f in facts if f.edge_id not in selected_ids]
-    log_recall(trace_id, tenant, req.query, selected, rejected, response.tokens_used, req.token_budget)
+    log_recall(
+        trace_id, tenant, req.query, selected, rejected, response.tokens_used, req.token_budget
+    )
     await persist_recall(
         trace_id, tenant, req.query, selected, rejected, response.tokens_used, req.token_budget
     )

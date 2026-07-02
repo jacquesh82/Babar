@@ -32,12 +32,37 @@ _NEGATION_OBJECTS = {"not", "no", "never", "none"}
 # (ou groupe 2 pour les motifs à relation).
 _PATTERNS: list[tuple[re.Pattern[str], str, bool, float]] = [
     (re.compile(r"\bmy name is ([\w][\w'’-]*)", re.I), "has_name", True, 0.0),
-    (re.compile(r"\bi was born (?:in|on) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "born_in", True, 0.0),
+    (
+        re.compile(r"\bi was born (?:in|on) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I),
+        "born_in",
+        True,
+        0.0,
+    ),
     (re.compile(r"\bi(?:'m| am) (\d{1,3}) years old", re.I), "has_age", False, 0.1),
-    (re.compile(r"\bi (?:live|living) in ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "lives_in", False, 0.05),
-    (re.compile(r"\bi (?:work|working) (?:at|for) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "works_at", False, 0.05),
-    (re.compile(r"\bi (?:work|working) as (?:an? )?([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "works_as", False, 0.05),
-    (re.compile(r"\bi (?:like|love|enjoy) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I), "likes", False, 0.05),
+    (
+        re.compile(r"\bi (?:live|living) in ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I),
+        "lives_in",
+        False,
+        0.05,
+    ),
+    (
+        re.compile(r"\bi (?:work|working) (?:at|for) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I),
+        "works_at",
+        False,
+        0.05,
+    ),
+    (
+        re.compile(r"\bi (?:work|working) as (?:an? )?([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I),
+        "works_as",
+        False,
+        0.05,
+    ),
+    (
+        re.compile(r"\bi (?:like|love|enjoy) ([\w][\w\s'’-]*?)(?:[.,;!?]|$)", re.I),
+        "likes",
+        False,
+        0.05,
+    ),
 ]
 
 # Motifs à relation : "my <relation> is <name>" → prédicat has_<relation>.
