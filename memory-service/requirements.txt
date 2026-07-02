@@ -1,0 +1,24 @@
+# Backend
+fastapi>=0.111
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pydantic-settings>=2.3
+
+# Storage
+asyncpg>=0.29
+sqlalchemy[asyncio]>=2.0
+pgvector>=0.3
+redis>=5.0
+
+# Worker de consolidation : ordonnanceur stdlib intégré (consolidation/cron.py),
+# aucune dépendance requise. Alternatives possibles si besoin de distribution :
+# celery[redis]>=5.4
+# arq>=0.26
+
+# Observabilité
+structlog>=24.1
+
+# Dév / tests
+pytest>=8.2
+pytest-asyncio>=0.23
+httpx>=0.27

@@ -1,0 +1,74 @@
+# ---------------------------------------------------------------------------
+# memory-service — orchestration locale.
+# Stack : FastAPI + PostgreSQL(pgvector) + Redis + worker de consolidation.
+# ---------------------------------------------------------------------------
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      uvicorn interface.api_rest:app
+      --host ${APP_HOST:-0.0.0.0} --port ${APP_PORT:-8000} --reload
+    env_file: .env
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Ordonnanceur stdlib intégré : boucle planifiée sur CONSOLIDATION_CRON.
+    # (Un cycle unique : `python -m consolidation.worker --once`.)
+    command: python -m consolidation.worker
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
+  postgres:
+    # Image pgvector : Postgres 16 avec l'extension `vector` pré-embarquée.
+    image: pgvector/pgvector:pg16
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-memory}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-memory}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Migrations appliquées dans l'ordre au premier démarrage du volume.
+      - ./storage/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memory} -d ${POSTGRES_DB:-memory}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  redisdata:

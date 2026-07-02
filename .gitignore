@@ -1,0 +1,3 @@
+# Artefacts locaux (hors projet memory-service/)
+dump.rdb
+*.rdb
